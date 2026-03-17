@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analizador ASFA Digital</title>
+    <title>Analizador CLS de ASFA Digital Embarcado</title>
     <script>
 /**
 * plotly.js v2.24.1
@@ -282,7 +282,7 @@
 
 <body>
     <div class="container">
-        <h1>Analizador ASFA Digital</h1>
+        <h1>Analizador CLS de ASFA Digital Embarcado</h1>
         <div class="card">
             <div class="drop-zone" id="dropZone">
                 <strong>Pulse aquí o arrastre un archivo .CLS</strong>
@@ -583,21 +583,35 @@
                 px = sliceX; preal = sliceReal; pctrl = sliceCtrl; pif = sliceIf; pdist = sliceDist;
             }
 
-            // Aceleración: tiene su propio array de fechas, filtrar por tiempo no por índice
+            // Aceleración: búsqueda binaria sobre accts (numérico) igual que las demás series
             let sliceAccX, sliceAccY;
-            if (tsStart === null && tsEnd === null) {
-                sliceAccX = full.accx;
-                sliceAccY = full.accy;
-            } else {
-                const tsS = tsStart ?? -Infinity;
-                const tsE = tsEnd   ??  Infinity;
-                sliceAccX = []; sliceAccY = [];
-                for (let i = 0; i < full.accx.length; i++) {
-                    const t = full.accx[i].getTime();
-                    if (t >= tsS && t <= tsE) {
-                        sliceAccX.push(full.accx[i]);
-                        sliceAccY.push(full.accy[i]);
+            {
+                let aLo = 0, aHi = full.accts.length - 1;
+                if (tsStart !== null) {
+                    let left = 0, right = full.accts.length;
+                    while (left < right) {
+                        const mid = (left + right) >> 1;
+                        if (full.accts[mid] < tsStart) left = mid + 1; else right = mid;
                     }
+                    aLo = Math.max(0, left - 1);
+                }
+                if (tsEnd !== null) {
+                    let left = aLo, right = full.accts.length;
+                    while (left < right) {
+                        const mid = (left + right) >> 1;
+                        if (full.accts[mid] <= tsEnd) left = mid + 1; else right = mid;
+                    }
+                    aHi = Math.min(full.accts.length - 1, left);
+                }
+                const accXSlice = full.accx.slice(aLo, aHi + 1);
+                const accYSlice = full.accy.slice(aLo, aHi + 1);
+                const accTsSlice = full.accts.slice(aLo, aHi + 1);
+                const idxAcc = lttbIndices(accTsSlice, accYSlice, MAX_PLOT_PTS);
+                if (idxAcc) {
+                    [sliceAccX, sliceAccY] = applyIndices(idxAcc, accXSlice, accYSlice);
+                } else {
+                    sliceAccX = accXSlice;
+                    sliceAccY = accYSlice;
                 }
             }
 
@@ -707,7 +721,7 @@
             // ── Arrays de series completas (para gráfica, se decimarán) ──
             const full = {
                 x: [], ts: [], real: [], ctrl: [], interf: [], dist: [],
-                accx: [], accy: []
+                accx: [], accy: [], accts: []
             };
             // Marcadores (pocos puntos, no se deciman)
             const mk = {
@@ -747,7 +761,7 @@
                 }
                 if (vL !== null && ts !== tL) {
                     const a = ((vr - vL) / 3.6) / ((ts - tL) / 1000);
-                    if (a >= -2.5 && a <= 2.5) { full.accx.push(dt); full.accy.push(a); }
+                    if (a >= -2.5 && a <= 2.5) { full.accx.push(dt); full.accy.push(a); full.accts.push(ts); }
                 }
                 vL = vr; tL = ts;
 
@@ -869,7 +883,7 @@
                 if (!('xaxis.range[0]' in e) && !('xaxis.autorange' in e)) return;
 
                 let s = null, n = null;
-                if (e['xaxis.range[0]']) {
+                if (e['xaxis.range[0]'] != null && !e['xaxis.autorange']) {
                     s = new Date(e['xaxis.range[0]']).getTime();
                     n = new Date(e['xaxis.range[1]']).getTime();
                 }
@@ -890,24 +904,33 @@
 
         // Actualiza datos de velocidad/aceleración y visibilidades según modo activo
         function redrawDecimated(tsStart, tsEnd) {
-            if (!chartFull) return;
+            if (!chartFull || !chartMarkers) return;
             const accel = dom.accelToggle.checked;
             const { px, preal, pctrl, pif, pdist, sliceAccX, sliceAccY } =
                 decimateRange(tsStart, tsEnd);
 
-            // Una sola llamada restyle sobre las 6 trazas en orden.
-            // Para los marcadores (idx 3 y 5) repetimos sus propios datos actuales
-            // leyéndolos del gráfico para no modificarlos.
-            const gd = document.getElementById('mainChart');
-            const bx  = gd.data[3].x,  by  = gd.data[3].y,  bt  = gd.data[3].customdata;
-            const ebx = gd.data[5].x,  eby = gd.data[5].y,  ebt = gd.data[5].customdata;
-
+            // Trazas 0-2: series de velocidad decimadas
             Plotly.restyle('mainChart', {
-                x:          [px,    px,    px,    bx,    sliceAccX, ebx],
-                y:          [preal, pctrl, pif,   by,    sliceAccY, eby],
-                customdata: [pdist, pdist, pdist, bt,    [[]],      ebt],
-                visible:    [true,  !accel, !accel, true, accel,    true]
-            }, [0, 1, 2, 3, 4, 5]);
+                x:          [px,    px,    px   ],
+                y:          [preal, pctrl, pif  ],
+                customdata: [pdist, pdist, pdist],
+                visible:    [true,  !accel, !accel]
+            }, [0, 1, 2]);
+
+            // Traza 4: aceleración (eje y2, array independiente)
+            Plotly.restyle('mainChart', {
+                x:       [sliceAccX],
+                y:       [sliceAccY],
+                visible: [accel]
+            }, [4]);
+
+            // Trazas 3 y 5: marcadores — siempre desde chartMarkers (nunca de gd.data)
+            Plotly.restyle('mainChart', {
+                x:          [chartMarkers.bx,  chartMarkers.ebx],
+                y:          [chartMarkers.by,  chartMarkers.eby],
+                customdata: [chartMarkers.bt,  chartMarkers.ebt],
+                visible:    [true, true]
+            }, [3, 5]);
         }
 
         dom.accelToggle.onchange = function () {
