@@ -22,14 +22,15 @@
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
-            padding: 20px;
+            padding: 0 0 20px 0;
             font-size: 13px;
             line-height: 1.5
         }
 
         .container {
             max-width: 1400px;
-            margin: 0 auto
+            margin: 0 auto;
+            padding: 24px 20px;
         }
 
         h1, h2, h3 {
@@ -199,6 +200,76 @@
             font-weight: 600;
         }
 
+        /* ── Fila con distancia diferencial inválida (0xFFFFFFFF) ── */
+        tr.row-baddist {
+            background-color: #fff8e1;
+        }
+        tr.row-baddist td {
+            color: #856404;
+        }
+        tr.pkt-row.row-baddist:hover td { background: #fff3cd; }
+
+        /* ── Fila expandible con visor hex ── */
+        tr.pkt-row { cursor: pointer; }
+        tr.pkt-row:hover td { background: #f0f7ff; }
+        tr.pkt-row.row-emergency:hover td { background: #ffe8e8; }
+
+        tr.pkt-detail { background: #f8f9fa; }
+        tr.pkt-detail td { padding: 0 !important; border-bottom: 2px solid var(--border); }
+
+        .pkt-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            background: #eef1f4;
+            padding: 0 12px;
+        }
+        .pkt-tab-btn {
+            padding: 6px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            letter-spacing: .03em;
+            transition: color .15s;
+        }
+        .pkt-tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: transparent;
+        }
+        .pkt-tab-btn:hover { color: var(--primary); }
+
+        .pkt-tab-panel { display: none; padding: 10px 14px; }
+        .pkt-tab-panel.active { display: block; }
+
+        /* Panel decodificado: tabla compacta */
+        .pkt-decoded-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 4px 12px;
+            font-size: 11px;
+        }
+        .pkt-decoded-grid .dk { color: #888; font-weight: 600; }
+        .pkt-decoded-grid .dv { font-family: 'Consolas', monospace; color: #111; word-break: break-word; }
+
+        /* Panel hex */
+        .hex-viewer {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.7;
+            white-space: pre;
+            color: #333;
+        }
+        .hex-viewer .hx-offset { color: #888; user-select: none; }
+        .hex-viewer .hx-hex   { color: #0056b3; }
+        .hex-viewer .hx-sep   { color: #ccc; user-select: none; }
+        .hex-viewer .hx-ascii { color: #2d6a4f; }
+
         .view-selector {
             display: flex;
             gap: 12px;
@@ -303,24 +374,189 @@
             font-family: 'Consolas', monospace;
             color: var(--primary);
         }
+
+        /* ── LOGIN ── */
+        #login-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+        }
+        #login-overlay.hidden { display: none; }
+        .login-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 48px 56px;
+            width: 380px;
+            box-shadow: 0 8px 32px #00000014;
+            border-radius: 8px;
+        }
+        .login-logo {
+            background: var(--primary);
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-weight: 800;
+            font-size: 11px;
+            letter-spacing: 2px;
+            padding: 5px 10px;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .login-title {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .login-subtitle {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 32px;
+            letter-spacing: 0.5px;
+        }
+        .login-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+        .login-field label {
+            font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #888;
+        }
+        .login-field input {
+            background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); font-family: 'Consolas', monospace; font-size: 14px;
+            padding: 10px 12px; outline: none; transition: border-color .15s; width: 100%;
+            border-radius: 4px;
+        }
+        .login-field input:focus { border-color: var(--primary); }
+        .login-btn {
+            width: 100%; padding: 12px;
+            background: var(--primary); border: none; color: #fff;
+            font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; font-weight: 700;
+            cursor: pointer; letter-spacing: .5px; margin-top: 8px;
+            transition: opacity .15s; border-radius: 6px;
+        }
+        .login-btn:hover { opacity: .88; }
+        .login-error {
+            display: none; margin-top: 14px;
+            background: #fdf0f0; border: 1px solid var(--error);
+            color: var(--error); padding: 9px 12px; font-size: 12px;
+            border-radius: 4px;
+        }
+        .login-error.visible { display: block; }
+
+        /* ── HEADER con zoom ── */
+        .app-header {
+            background: var(--card);
+            border-bottom: 2px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            margin-bottom: 24px;
+        }
+        .app-header h1 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            border: none;
+            padding: 0;
+            margin: 0;
+            white-space: nowrap;
+        }
+        .header-sep {
+            width: 1px; height: 24px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+        .zoom-controls {
+            display: flex; align-items: center; gap: 4px;
+        }
+        .zoom-btn {
+            background: #f1f3f5; border: 1px solid var(--border);
+            color: var(--text); font-family: 'Consolas', monospace;
+            font-size: 14px; width: 28px; height: 28px;
+            cursor: pointer; display: flex; align-items: center;
+            justify-content: center; padding: 0; line-height: 1;
+            border-radius: 4px; transition: background .15s;
+        }
+        .zoom-btn:hover { background: var(--border); }
+        .zoom-label {
+            background: #f1f3f5; border: 1px solid var(--border);
+            color: #888; font-family: 'Consolas', monospace;
+            font-size: 11px; height: 28px; padding: 0 8px;
+            cursor: pointer; min-width: 52px; text-align: center;
+            line-height: 28px; border-radius: 4px;
+        }
+        .header-user-section {
+            display: flex; align-items: center; gap: 10px;
+            padding-left: 16px; border-left: 1px solid var(--border);
+        }
+        .header-user-section span.user-icon { font-size: 12px; color: #888; }
+        .header-user-section span.user-name {
+            font-size: 13px; color: var(--primary);
+            font-weight: 600; font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .logout-btn {
+            background: transparent; border: 1px solid var(--border);
+            color: #888; font-family: 'Consolas', monospace;
+            font-size: 11px; padding: 4px 10px; cursor: pointer;
+            transition: all .15s; border-radius: 4px;
+        }
+        .logout-btn:hover { border-color: var(--error); color: var(--error); }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Analizador CLS de ASFA Digital Embarcado</h1>
 
-        <div class="card">
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">ASFA CLS</div>
+    <div class="login-title">Analizador CLS</div>
+    <div class="login-subtitle">ASFA Digital Embarcado · ET 03.365.008.6</div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="login-user" autocomplete="off" spellcheck="false"
+             onkeydown="if(event.key==='Enter') document.getElementById('login-pass').focus()">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Acceder</button>
+    <div class="login-error" id="login-error">Usuario o contraseña incorrectos.</div>
+  </div>
+</div>
+
+<!-- HEADER FIJO CON ZOOM -->
+<div class="app-header">
+    <h1>Analizador CLS de ASFA Digital Embarcado</h1>
+    <div class="header-sep"></div>
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomOut()" title="Reducir zoom">−</button>
+        <button class="zoom-label" id="zoom-label" onclick="zoomReset()" title="Restablecer zoom">100%</button>
+        <button class="zoom-btn" onclick="zoomIn()" title="Aumentar zoom">+</button>
+    </div>
+    <div style="margin-left:auto;" class="header-user-section">
+        <span class="user-icon">👤</span>
+        <span class="user-name" id="header-user"></span>
+        <button class="logout-btn" onclick="doLogout()" title="Cerrar sesión">⏏ Salir</button>
+    </div>
+</div>
+
+    <div class="container">        <div class="card">
             <div class="drop-zone" id="dropZone">
                 <strong>Pulse aquí o arrastre un archivo .CLS</strong>
                 <input type="file" id="fileInput" accept=".cls,.CLS">
             </div>
             <div id="loadingSpinner" class="loading-spinner"></div>
-            <div id="fileStatus" class="status-msg">Cargue un registro para iniciar la auditoría técnica.</div>
+            <div id="fileStatus" class="status-msg">Cargar el fichero de registro CLS para analizar</div>
         </div>
 
         <div class="card" id="headerSection" style="display:none;">
-            <h2>1. Cabecera del Registro (Protocolo ASFA-D)</h2>
+            <h2>1. Cabecera del Registro</h2>
             <div class="header-grid" id="headerData"></div>
         </div>
 
@@ -332,14 +568,17 @@
                         <input type="checkbox" id="accelToggle" style="width:20px;height:20px;"> Visualiza Aceleración
                         </label>
                         <label style="cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;">
-                            <input type="checkbox" id="smoothToggle" style="width:20px;height:20px;"> Suavizar curvas
-                        </label>
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;">
                             <input type="checkbox" id="showPointsToggle" style="width:20px;height:20px;"> Mostrar puntos
                         </label>
                         <label style="cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;">
+                            <input type="checkbox" id="ebMovingToggle" style="width:20px;height:20px;"> F.E. solo V.R > 10 km/h
+                        </label>
+                        <label style="cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;">
+                            <input type="checkbox" id="distModeToggle" style="width:20px;height:20px;"> Eje distancia
+                        </label>
+                        <label id="relDistLabel" style="cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;">
                             <input type="checkbox" id="relDistToggle" style="width:20px;height:20px;"> Distancia relativa
-                    </label>
+                        </label>
                     <button class="btn btn-outline btn-sm" id="btnExportImg" title="Guardar gráfica como imagen PNG">📷 Exportar gráfica</button>
                 </div>
                 <div class="stats-badge" id="globalStats">Esperando datos...</div>
@@ -358,7 +597,7 @@
         <div class="card" id="tablesSection" style="display:none;padding:0;">
             <div style="padding:24px;">
                 <div id="summaryWrapper">
-                    <h3>3. Resumen de Tipos de Eventos</h3>
+                    <h2>3. Resumen de Tipos de Eventos</h2>
                     <div class="table-container">
                         <table>
                             <thead>
@@ -374,7 +613,7 @@
                     </div>
                 </div>
                 <div id="detailsWrapper" style="display:none;">
-                    <h3>3. Lista Cronológica Completa de Paquetes</h3>
+                    <h2>3. Lista Cronológica Completa de Paquetes</h2>
                     <div class="filter-section">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
                             <strong>Variables registradas:</strong>
@@ -412,9 +651,42 @@
                         <div id="scrollSentinel" style="height:1px;"></div>
                     </div><!-- /table-container -->
                 </div><!-- /detailsWrapper -->
+                <div id="errorsWrapper" style="display:none;">
+                    <h2>3. Paquetes con Error <span id="errorsCount" style="font-size:14px;font-weight:400;color:#856404;background:#fff8e1;border:1px solid #ffc107;border-radius:12px;padding:2px 10px;margin-left:8px;"></span></h2>
+                    <div style="font-size:12px;color:#666;margin-bottom:12px;">
+                        Se incluyen paquetes con <strong>checksum incorrecto</strong> y/o <strong>distancia diferencial inválida</strong> (0xFFFFFFFF).
+                    </div>
+                    <div class="table-container">
+                        <div id="renderProgressErr" class="loading-bar"></div>
+                        <table id="errorsTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Ms</th>
+                                    <th>Cód</th>
+                                    <th>Variable</th>
+                                    <th>Valor</th>
+                                    <th>Dist (m)</th>
+                                    <th>V.R</th>
+                                    <th>V.C</th>
+                                    <th>V.IF</th>
+                                    <th>CK</th>
+                                    <th>Motivo error</th>
+                                </tr>
+                            </thead>
+                            <tbody id="errorsBody"></tbody>
+                        </table>
+                        <div id="scrollSentinelErr" style="height:1px;"></div>
+                    </div>
+                </div><!-- /errorsWrapper -->
             <div class="view-selector">
                 <button class="btn btn-primary" id="btnShowSummary">Ver Resumen</button>
                 <button class="btn btn-outline" id="btnShowDetails">Ver Lista Completa</button>
+                <button class="btn btn-outline" id="btnShowErrors" style="border-color:#ffc107;color:#856404;">
+                    ⚠ Ver Errores <span id="errBadge" style="background:#ffc107;color:#333;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span>
+                </button>
                 <button class="btn btn-outline" style="margin-left:auto;" id="btnExportCSV">Exportar CSV</button>
             </div>
         </div>
@@ -529,11 +801,13 @@
             drop:           document.getElementById('dropZone'),
             fileInput:      document.getElementById('fileInput'),
             accelToggle:    document.getElementById('accelToggle'),
-            smoothToggle:      document.getElementById('smoothToggle'),
             showPointsToggle:  document.getElementById('showPointsToggle'),
             relDistToggle:  document.getElementById('relDistToggle'),
+            ebMovingToggle: document.getElementById('ebMovingToggle'),
+            distModeToggle: document.getElementById('distModeToggle'),
             btnShowSummary: document.getElementById('btnShowSummary'),
             btnShowDetails: document.getElementById('btnShowDetails'),
+            btnShowErrors:  document.getElementById('btnShowErrors'),
             header:         document.getElementById('headerData'),
             packets:        document.getElementById('packetsBody'),
             summaryBody:    document.getElementById('summaryBody'),
@@ -554,6 +828,7 @@
         let rawData      = [];   // todos los paquetes parseados
         let chartFull    = null; // series completas (x/ts/real/ctrl/interf/dist/accel)
         let chartMarkers = null; // balizas y frenadas (pocos puntos, sin decimar)
+        let dateChanges  = [];   // timestamps de cambio de fecha (medianoche) para la gráfica
         let currentRange  = [null, null];
         let selectedVars  = new Set();
         let totalInFile   = 0;
@@ -562,7 +837,7 @@
         let headerChecksumOK = true;
         let hasDistData   = true;  // false = distancia calculada por vel×tiempo
 
-        const TRACE_IDX = { real: 0, ctrl: 1, interf: 2, baliza: 3, accel: 4, eb: 5, recon: 6 };
+        const TRACE_IDX = { real: 0, ctrl: 1, interf: 2, baliza: 3, accel: 4, eb: 5, recon: 6, aumento: 7, rebase: 8, ocult: 9 };
         const MAX_PLOT_PTS   = 3000;   // máximo de puntos en vista completa
         const TABLE_DEBOUNCE = 500;    // ms de espera tras soltar el zoom
 
@@ -667,7 +942,19 @@
             const idxV = lttbIndices(sliceTs, sliceReal, MAX_PLOT_PTS);
             let px, preal, pctrl, pif, pdist, pctrlActivo;
             if (idxV) {
-                [px, preal, pctrl, pif, pdist, pctrlActivo] = applyIndices(idxV, sliceX, sliceReal, sliceCtrl, sliceIf, sliceDist, sliceCtrlAct);
+                // Añadir índices donde ctrl o interf cruzan 0 (transición 0↔no-0)
+                // para que los apagados/desactivaciones de cabina no desaparezcan al decimar
+                const mandatory = new Set(idxV);
+                for (let i = 1; i < sliceCtrl.length; i++) {
+                    const ctrlCross = (sliceCtrl[i] === 0) !== (sliceCtrl[i - 1] === 0);
+                    const ifCross   = (sliceIf[i]   === 0) !== (sliceIf[i - 1]   === 0);
+                    if (ctrlCross || ifCross) {
+                        mandatory.add(i - 1);
+                        mandatory.add(i);
+                    }
+                }
+                const merged = Array.from(mandatory).sort((a, b) => a - b);
+                [px, preal, pctrl, pif, pdist, pctrlActivo] = applyIndices(merged, sliceX, sliceReal, sliceCtrl, sliceIf, sliceDist, sliceCtrlAct);
             } else {
                 px = sliceX; preal = sliceReal; pctrl = sliceCtrl; pif = sliceIf; pdist = sliceDist; pctrlActivo = sliceCtrlAct;
             }
@@ -751,18 +1038,26 @@
             if (renderTimeout) { clearTimeout(renderTimeout); renderTimeout = null; }
             if (tableDebounce) { clearTimeout(tableDebounce); tableDebounce = null; }
             rawData = []; chartFull = null; chartMarkers = null;
+            dateChanges = [];
             totalInFile = 0; selectedVars.clear();
             currentRange = [null, null];
             headerChecksumOK = true;
             hasDistData      = true;
             filteredData = []; renderedUpto = 0;
+            tableDistBaseGlobal = 0;
+            _rowUid = 0;
+            errorsData = []; errorsRendered = 0;
+            if (errorsObserver) { errorsObserver.disconnect(); errorsObserver = null; }
+            document.getElementById('errorsBody').innerHTML = '';
+            document.getElementById('errBadge').textContent = '0';
             if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
             dom.header.innerHTML = ''; dom.packets.innerHTML = '';
             dom.summaryBody.innerHTML = ''; dom.filterGrid.innerHTML = '';
             dom.accelToggle.checked      = false;
-            dom.smoothToggle.checked     = false;
             dom.showPointsToggle.checked = false;
             dom.relDistToggle.checked    = false;
+            dom.ebMovingToggle.checked   = false;
+            dom.distModeToggle.checked   = false;
             dom.progressBar.style.width = '0%';
             ['headerSection','chartsSection','tablesSection'].forEach(
                 id => document.getElementById(id).style.display = 'none');
@@ -816,7 +1111,7 @@
         }
 
         async function parseAsync(dv, fileName) {
-            const CHUNK = 5000; // paquetes por tick
+            const CHUNK = 10000; // paquetes por tick
 
             // ── Arrays de series completas (para gráfica, se decimarán) ──
             const full = {
@@ -825,9 +1120,12 @@
             };
             // Marcadores (pocos puntos, no se deciman)
             const mk = {
-                bx: [], by: [], bt: [], bc: [],
-                ebx: [], eby: [], ebt: [],
-                rx: [], ry: [], rt: [], rc: []   // reconocimientos
+                bx: [], by: [], bt: [], bc: [], bd: [],   // bd = dist acumulada
+                ebx: [], eby: [], ebt: [], ebd: [],
+                rx: [], ry: [], rt: [], rc: [], rd: [],
+                ax: [], ay: [], at: [], ad: [],
+                rbx: [], rby: [], rbt: [], rbd: [],
+                ocx: [], ocy: [], oct: [], ocd: []
             };
 
             let ptr = 40, distAcc = 0;
@@ -837,28 +1135,29 @@
             // tras un gap >10s: { tsV1, vr1, distAcc1, vc1, vi1, idxV1 }
             let pendingStop = null;
             let lastCtrlActivo = null;
+            // cabinaActiva: solo se pone a false cuando FF15 val=0 aparece DESPUÉS de haber
+            // visto al menos un FF15 val>0 (cabina que se desactiva durante la marcha).
+            // FF15 val=0 en arranque frío (sin FF15 val>0 previo) se ignora para no borrar
+            // las velocidades de control en registros que no usan este mecanismo.
+            // FF04 (apagado) y FF03 (encendido) también controlan el estado.
+            let cabinaActiva = true;
+            let everCabinaOn = false;
             let lastBalizaTs = -Infinity, lastBalizaColor = '#95a5a6';
             const RECON_WINDOW_MS = 3000;
             const REBASE_WINDOW_MS = 10000;
+            // Variables que generan icono de reconocimiento (excluye rebase y ocultación,
+            // que tienen sus propios marcadores)
             const RECON_VARS = new Set([
                 0xFF52, 0xFF53, 0xFF54, 0xFF55,
                 0xFF56, 0xFF57, 0xFF66, 0xFF67,
-                0xFF5C, 0xFF5D, 0xFF5E, 0xFF5F
+                0xFF5C, 0xFF5D
             ]);
             const REBASE_VARS = new Set([0xFF5E, 0xFF5F]);
+            const OCULT_VARS  = new Set([0xFF64, 0xFF65]);
             let pendingRebase = [];
 
-            // Detectar si el fichero informa distancia (dd != 0 en algún paquete)
+            // hasDistData se detecta durante el parseo principal (dd != 0 en algún paquete)
             hasDistData = false;
-            {
-                let p = 40, n = 0;
-                while (n < totalInFile && p + 30 <= dv.byteLength) {
-                    if (dv.getUint16(p, true) !== 0xDCBA) { p++; continue; }
-                    if (dv.getUint32(p + 14, true) !== 0) { hasDistData = true; break; }
-                    n++; p += 30;
-                }
-            }
-
 
             const uniqueVFound = new Set();
             let readCount = 0;
@@ -881,19 +1180,56 @@
 
                 const ts = sec * 1000 + ms;
                 const dt = new Date(ts);
-                if (vC === 0xFF03) pOn = ts;
+                if (vC === 0xFF03) { pOn = ts; cabinaActiva = true; }
+                if (vC === 0xFF04) cabinaActiva = false;
                 if (vC === 0xFFF1) lastCtrlActivo = val;
+                if (vC === 0xFF15) {
+                    if (val !== 0) { cabinaActiva = true;  everCabinaOn = true; }
+                    else if (everCabinaOn) cabinaActiva = false;
+                    // FF15 val=0 sin haber visto nunca val>0 → arranque frío, ignorar
+                }
 
-                // Acumular distancia
+                // Velocidades de supervisión: 0 cuando la cabina está desactivada o el equipo apagado
+                const vcEff = cabinaActiva ? vc : 0;
+                const viEff = cabinaActiva ? vi : 0;
+
+                // Distancia diferencial errónea si supera 10 veces la estimada
+                // entre las dos últimas medidas de velocidad (0xFF10).
+                // Se usa vLspeed/tLspeed para que el intervalo y velocidad media sean
+                // los de dos puntos de velocidad reales, no de paquetes intermedios.
+                // Si el tren está parado (distCalcRef ≤ 0.5 m) cualquier dd > 5 m es anómalo.
+                let badDist = false;
+                let distCalcRef = 0;
+                if (dd !== 0 && vLspeed !== null && tLspeed !== null && ts > tLspeed) {
+                    const dtSec = (ts - tLspeed) / 1000;
+                    const vAvg  = (vr + vLspeed) / 2;
+                    distCalcRef = (vAvg / 3.6) * dtSec;
+                    if (distCalcRef > 0.5) {
+                        if (dd > distCalcRef * 10) badDist = true;
+                    } else {
+                        // Tren parado o casi: cualquier dd > 5 m es anómalo
+                        if (dd > 5) badDist = true;
+                    }
+                }
+                const ddEff = badDist ? 0 : dd;
+
+                // Acumular distancia (y detectar inline si el fichero informa dd)
+                if (!hasDistData && dd !== 0) {
+                    hasDistData = true;
+                    distAcc = 0;
+                    for (let k = 0; k < full.dist.length; k++) full.dist[k] = 0;
+                }
                 if (hasDistData) {
-                    distAcc += dd;
+                    distAcc += ddEff;
                 } else if (tL !== null && ts > tL) {
                     distAcc += Math.round((vr / 3.6) * ((ts - tL) / 1000));
                 }
 
                 if (vC === 0xFF20) {
                     if (val === 1 && lastEB === 0 && ts !== pOn) {
-                        mk.ebx.push(dt); mk.eby.push(2.2); mk.ebt.push('FRENO EMERGENCIA');
+                        mk.ebx.push(dt); mk.eby.push(2.2);
+                        mk.ebt.push(['FRENO EMERGENCIA', vr]);
+                        mk.ebd.push(distAcc);
                     }
                     lastEB = val;
                 }
@@ -932,7 +1268,7 @@
                             // Gap >10s parado → arranque: diferir punto sintético al siguiente paquete
                             pendingStop = {
                                 tsV1: ts, vrV1: vr,
-                                distSyn: distAcc, vcSyn: vc, viSyn: vi,
+                                distSyn: distAcc, vcSyn: vcEff, viSyn: viEff,
                                 idxV1: full.x.length  // índice donde se insertará el paquete actual
                             };
                         } else if (vLspeed === 0) {
@@ -953,23 +1289,22 @@
                 vL = vr; tL = ts;
 
                 full.x.push(dt); full.ts.push(ts);
-                full.real.push(vr); full.ctrl.push(vc); full.interf.push(vi);
+                full.real.push(vr); full.ctrl.push(vcEff); full.interf.push(viEff);
                 full.dist.push(distAcc); full.ctrlActivo.push(lastCtrlActivo);
 
                 if (vC === 0xFFF0 && val !== 0) {
                     mk.bx.push(dt); mk.by.push(20);
-                    mk.bt.push(`Baliza recibida: ${val}`); mk.bc.push(getBColor(val));
+                    mk.bt.push([`Baliza recibida: ${val}`, vr]); mk.bc.push(getBColor(val));
+                    mk.bd.push(distAcc);
                     lastBalizaTs    = ts;
                     lastBalizaColor = getBColor(val);
 
-                    // Baliza 8 (parada): resolver pulsaciones de rebase pendientes
                     if (val === 8) {
-                        const color = darkenColor(getBColor(8));
                         pendingRebase = pendingRebase.filter(r => {
                             if (ts - r.ts <= REBASE_WINDOW_MS) {
-                                mk.rx.push(r.dt); mk.ry.push(10);
-                                mk.rt.push(`Reconocimiento: ${r.label}`);
-                                mk.rc.push(color);
+                                mk.rbx.push(r.dt); mk.rby.push(15);
+                                mk.rbt.push([`Rebase autorizado: ${r.label}`, r.vr]);
+                                mk.rbd.push(r.dist);
                                 return false;
                             }
                             return false;
@@ -977,17 +1312,41 @@
                     }
                 }
 
-                // Reconocimiento normal: pulsador activo dentro de los 3s tras baliza
                 if (RECON_VARS.has(vC) && val === 1) {
                     const reconLabel = VAR_MAP[vC] || `0x${vC.toString(16).toUpperCase()}`;
-                    if (REBASE_VARS.has(vC)) {
-                        pendingRebase = pendingRebase.filter(r => (ts - r.ts) <= REBASE_WINDOW_MS);
-                        pendingRebase.push({ dt, ts, label: reconLabel });
-                    } else if (ts >= lastBalizaTs && (ts - lastBalizaTs) <= RECON_WINDOW_MS) {
+                    if (ts >= lastBalizaTs && (ts - lastBalizaTs) <= RECON_WINDOW_MS) {
                         mk.rx.push(dt); mk.ry.push(10);
-                        mk.rt.push(`Reconocimiento: ${reconLabel}`);
+                        mk.rt.push([`Reconocimiento: ${reconLabel}`, vr]);
                         mk.rc.push(darkenColor(lastBalizaColor));
+                        mk.rd.push(distAcc);
                     }
+                }
+
+                if (REBASE_VARS.has(vC) && val === 1) {
+                    const reconLabel = VAR_MAP[vC] || `0x${vC.toString(16).toUpperCase()}`;
+                    pendingRebase = pendingRebase.filter(r => (ts - r.ts) <= REBASE_WINDOW_MS);
+                    pendingRebase.push({ dt, ts, vr, dist: distAcc, label: reconLabel });
+                }
+
+                if ((vC === 0xFF58 || vC === 0xFF59) && val === 1) {
+                    const cab = vC === 0xFF58 ? 'Cab 1' : 'Cab 2';
+                    mk.ax.push(dt); mk.ay.push(15);
+                    mk.at.push([`Aumento velocidad control (${cab})`, vr]);
+                    mk.ad.push(distAcc);
+                }
+
+                if ((vC === 0xFF5E || vC === 0xFF5F) && val === 1) {
+                    const cab = vC === 0xFF5E ? 'PR 1' : 'PR 2';
+                    mk.rbx.push(dt); mk.rby.push(15);
+                    mk.rbt.push([`Rebase autorizado (${cab})`, vr]);
+                    mk.rbd.push(distAcc);
+                }
+
+                if ((vC === 0xFF64 || vC === 0xFF65) && val === 1) {
+                    const cab = vC === 0xFF64 ? 'PR 1' : 'PR 2';
+                    mk.ocx.push(dt); mk.ocy.push(15);
+                    mk.oct.push([`Ocultación (${cab})`, vr]);
+                    mk.ocd.push(distAcc);
                 }
 
                 let pktSum = 0;
@@ -995,9 +1354,13 @@
                 const storedCK = dv.getUint16(ptr + 28, true);
                 const ckOK = (pktSum & 0xFFFF) === storedCK;
 
-                rawData.push({ pN, ts, vC, val, vr, vc, vi, dist: distAcc,
-                    dtS: dt.toLocaleDateString(), tmS: dt.toLocaleTimeString(), ms, ckOK,
-                    ctrlActivo: lastCtrlActivo });
+                // Capturar los 30 bytes raw del paquete para el visor hex
+                const rawBytes = new Uint8Array(dv.buffer, ptr, 30);
+                const hexBytes = Array.from(rawBytes);
+
+                rawData.push({ pN, ts, vC, val, vr, vc: vcEff, vi: viEff, dist: distAcc,
+                    dd, dtS: dt.toLocaleDateString(), tmS: dt.toLocaleTimeString(), ms, ckOK,
+                    ctrlActivo: lastCtrlActivo, hexBytes, badDist, distCalcRef });
                 uniqueVFound.add(vC);
                 ptr += 30;
 
@@ -1021,6 +1384,21 @@
 
             chartFull    = full;
             chartMarkers = mk;
+
+            // Detectar cambios de fecha (medianoche UTC) en la serie temporal
+            // Se usa UTC porque Plotly representa el eje X en UTC
+            dateChanges = [];
+            if (full.ts.length > 1) {
+                let prevDay = new Date(full.ts[0]).toISOString().slice(0, 10);
+                for (let i = 1; i < full.ts.length; i++) {
+                    const curDay = new Date(full.ts[i]).toISOString().slice(0, 10);
+                    if (curDay !== prevDay) {
+                        // Timestamp exacto de medianoche UTC del día nuevo
+                        dateChanges.push(new Date(curDay + 'T00:00:00.000Z'));
+                        prevDay = curDay;
+                    }
+                }
+            }
 
             // Indicar si la distancia es calculada o procedente de los paquetes
             const distLabel = hasDistData ? 'Dist (m)' : 'Dist calc. (m)';
@@ -1061,77 +1439,192 @@
         // ============================================================
         // GRÁFICA — DIBUJO INICIAL
         // ============================================================
-        function buildTraces(tsStart, tsEnd, accelVisible, smooth) {
+
+        // Transforma (xs, ys) insertando un punto sintético (xs[i], ys[i-1]) antes
+        // de cada subida, para que los tramos ascendentes se pinten como escalón
+        // horizontal-luego-vertical. Los tramos descendentes van en línea recta.
+        function stairDown(xs, ys) {
+            if (xs.length === 0) return { sx: xs, sy: ys };
+            const sx = [], sy = [];
+            sx.push(xs[0]); sy.push(ys[0]);
+            for (let i = 1; i < xs.length; i++) {
+                if (ys[i] > ys[i - 1]) {
+                    // Subida: insertar punto horizontal en el nivel anterior
+                    sx.push(xs[i]); sy.push(ys[i - 1]);
+                }
+                sx.push(xs[i]); sy.push(ys[i]);
+            }
+            return { sx, sy };
+        }
+
+        function buildTraces(tsStart, tsEnd, accelVisible) {
             const mk = chartMarkers;
             const { px, preal, pctrl, pif, pdist, pctrlActivo, sliceAccX, sliceAccY } =
                 decimateRange(tsStart, tsEnd);
 
+            const distMode   = dom.distModeToggle.checked;
             const relDist    = dom.relDistToggle.checked;
             const distBase   = relDist && pdist.length ? pdist[0] : 0;
-            const cdReal     = pdist.map((d, i) => [d - distBase, decodeCtrlActivo(pctrlActivo[i])]);
+            const pxAxis     = distMode ? pdist.map(d => d - distBase) : px;
+            const cdReal     = pdist.map((d, i) => [d - distBase, decodeCtrlActivo(pctrlActivo[i]), px[i] instanceof Date ? px[i].toLocaleString('es-ES') : '']);
             const distTip    = (hasDistData ? 'Dist' : 'Dist calc.') + (relDist ? ' rel.' : '');
             const showPoints = dom.showPointsToggle.checked;
             const withPts    = showPoints ? 'lines+markers' : 'lines';
-            const hvShape    = smooth ? 'spline' : 'hv';
             const markerDot  = { size: 5, opacity: 0.7 };
 
+            // En modo distancia los marcadores usan bd (dist acumulada) como X
+            const distOff = distBase;
+            const mkBx  = distMode ? mk.bd.map(d => d - distOff) : mk.bx;
+            const mkEbx = distMode ? mk.ebd.map(d => d - distOff) : mk.ebx;
+            const mkRx  = distMode ? mk.rd.map(d => d - distOff) : mk.rx;
+            const mkAx  = distMode ? mk.ad.map(d => d - distOff) : mk.ax;
+            const mkRbx = distMode ? mk.rbd.map(d => d - distOff) : mk.rbx;
+            const mkOcx = distMode ? mk.ocd.map(d => d - distOff) : mk.ocx;
+
+            const hoverX   = distMode ? '<b>%{x:,.0f} m</b>' : '<b>%{x|%d/%m/%Y %H:%M:%S}</b>';
+            const xTipReal = distMode
+                ? `<b>%{x:,.0f} m</b><br>%{customdata[2]}<br>%{y} km/h<br>Control: %{customdata[1]}<extra>V. Real</extra>`
+                : `<b>%{x|%d/%m/%Y %H:%M:%S}</b><br>%{y} km/h<br>${distTip}: %{customdata[0]} m<br>Control: %{customdata[1]}<extra>V. Real</extra>`;
+
+            const { sx: csx, sy: csy } = stairDown(pxAxis, pctrl);
+            const { sx: isx, sy: isy } = stairDown(pxAxis, pif);
+            const accX = distMode ? sliceAccX.map(d => {
+                // sliceAccX son fechas; buscar dist correspondiente en chartFull
+                const t = d instanceof Date ? d.getTime() : d;
+                const full = chartFull;
+                let lo = 0, hi = full.ts.length - 1;
+                while (lo < hi) { const m = (lo+hi)>>1; if (full.ts[m] < t) lo=m+1; else hi=m; }
+                return full.dist[lo] - distOff;
+            }) : sliceAccX;
+
             return [
-                // 0: V. Real — sin suavizado, puntos según showPoints/smooth
-                { type: 'scatter', name: 'V. Real', x: px, y: preal,
+                // 0: V. Real
+                { type: 'scatter', name: 'V. Real', x: pxAxis, y: preal,
                   customdata: cdReal, mode: withPts,
                   line: { color: '#1f77b4', width: 2, shape: 'linear' },
                   marker: markerDot,
-                  hovertemplate: `<b>%{x|%d/%m/%Y %H:%M:%S}</b><br>%{y} km/h<br>${distTip}: %{customdata[0]} m<br>Control: %{customdata[1]}<extra>V. Real</extra>` },
-                // 1: V. Control — con suavizado y puntos
-                { type: 'scattergl', name: 'V. Control', x: px, y: pctrl,
-                  mode: withPts, line: { color: '#ff7f0e', shape: hvShape, width: 1.5 },
+                  hovertemplate: xTipReal },
+                // 1: V. Control
+                { type: 'scattergl', name: 'V. Control', x: csx, y: csy,
+                  mode: withPts, line: { color: '#ff7f0e', shape: 'linear', width: 1.5 },
                   marker: markerDot,
                   visible: !accelVisible,
                   hovertemplate: '%{y} km/h<extra>V. Control</extra>' },
-                // 2: V. Intervención — con suavizado y puntos
-                { type: 'scattergl', name: 'V. Interv.', x: px, y: pif,
-                  mode: withPts, line: { color: '#d62728', shape: hvShape, width: 1.5 },
+                // 2: V. Intervención
+                { type: 'scattergl', name: 'V. Interv.', x: isx, y: isy,
+                  mode: withPts, line: { color: '#d62728', shape: 'linear', width: 1.5 },
                   marker: markerDot,
                   visible: !accelVisible,
                   hovertemplate: '%{y} km/h<extra>V. Interv.</extra>' },
-                // 3: Balizas — siempre visible
+                // 3: Balizas
                 { type: 'scatter', name: 'Baliza recibida',
-                  x: mk.bx, y: mk.by, customdata: mk.bt,
+                  x: mkBx, y: mk.by, customdata: mk.bt,
                   mode: 'markers', marker: { color: mk.bc, size: 10, symbol: 'diamond' },
-                  hovertemplate: '<b>%{x|%d/%m/%Y %H:%M:%S}</b><br>%{customdata}<extra>Baliza</extra>' },
-                // 4: Aceleración — sin suavizado, puntos según showPoints/smooth
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Baliza</extra>` },
+                // 4: Aceleración
                 { type: 'scattergl', name: 'Aceleración',
-                  x: sliceAccX, y: sliceAccY, mode: withPts,
+                  x: accX, y: sliceAccY, mode: withPts,
                   line: { color: '#9467bd', width: 1.5, shape: 'linear' },
                   marker: markerDot,
                   yaxis: 'y2', fill: 'none', visible: accelVisible,
                   hovertemplate: '%{y:.2f} m/s²<extra>Aceleración</extra>' },
-                // 5: Freno emergencia — siempre visible
+                // 5: Freno emergencia
                 { type: 'scatter', name: 'Freno Emergencia',
-                  x: mk.ebx, y: mk.eby, customdata: mk.ebt,
+                  x: mkEbx, y: mk.eby, customdata: mk.ebt,
                   mode: 'markers', marker: { color: 'red', size: 14, symbol: 'triangle-down' },
                   yaxis: 'y2', visible: true,
-                  hovertemplate: '<b>%{x|%d/%m/%Y %H:%M:%S}</b><br>%{customdata}<extra>Freno Emerg.</extra>' },
-                // 6: Reconocimientos — siempre visible
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Freno Emerg.</extra>` },
+                // 6: Reconocimientos
                 { type: 'scatter', name: 'Reconocimiento',
-                  x: mk.rx, y: mk.ry, customdata: mk.rt,
+                  x: mkRx, y: mk.ry, customdata: mk.rt,
                   mode: 'markers',
                   marker: { color: mk.rc, size: 12, symbol: 'triangle-down' },
-                  hovertemplate: '<b>%{x|%d/%m/%Y %H:%M:%S}</b><br>%{customdata}<extra>Reconocimiento</extra>' }
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Reconocimiento</extra>` },
+                // 7: Aumento de velocidad
+                { type: 'scatter', name: 'Aumento Vel. Control',
+                  x: mkAx, y: mk.ay, customdata: mk.at,
+                  mode: 'markers',
+                  marker: { color: '#1a7a3c', size: 11, symbol: 'triangle-up' },
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Aumento Vel.</extra>` },
+                // 8: Rebase autorizado
+                { type: 'scatter', name: 'Rebase autorizado',
+                  x: mkRbx, y: mk.rby, customdata: mk.rbt,
+                  mode: 'markers',
+                  marker: { color: '#1f77b4', size: 11, symbol: 'triangle-up' },
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Rebase</extra>` },
+                // 9: Ocultación
+                { type: 'scatter', name: 'Ocultación',
+                  x: mkOcx, y: mk.ocy, customdata: mk.oct,
+                  mode: 'markers',
+                  marker: { color: '#888', size: 11, symbol: 'circle' },
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Ocultación</extra>` }
             ];
         }
 
+        function buildDateChangeLayout() {
+            const shapes      = [];
+            const annotations = [];
+            const distMode    = dom.distModeToggle.checked;
+            const relDist     = dom.relDistToggle.checked;
+            const distBase    = relDist && chartFull && chartFull.dist.length ? chartFull.dist[0] : 0;
+
+            dateChanges.forEach(dt => {
+                let x;
+                if (distMode && chartFull) {
+                    // Buscar el índice en chartFull más cercano al timestamp de medianoche
+                    const tMs = dt.getTime();
+                    let lo = 0, hi = chartFull.ts.length - 1;
+                    while (lo < hi) {
+                        const mid = (lo + hi) >> 1;
+                        if (chartFull.ts[mid] < tMs) lo = mid + 1; else hi = mid;
+                    }
+                    x = chartFull.dist[lo] - distBase;
+                } else {
+                    x = dt.toISOString();
+                }
+
+                const label = [
+                    String(dt.getUTCDate()).padStart(2,'0'),
+                    String(dt.getUTCMonth()+1).padStart(2,'0'),
+                    dt.getUTCFullYear()
+                ].join('/');
+
+                shapes.push({
+                    type: 'line', xref: 'x', yref: 'paper',
+                    x0: x, x1: x, y0: 0, y1: 1,
+                    line: { color: '#aaa', width: 1, dash: 'dot' }
+                });
+                annotations.push({
+                    xref: 'x', yref: 'paper',
+                    x: x, y: 1,
+                    xanchor: 'left', yanchor: 'top',
+                    text: label,
+                    showarrow: false,
+                    font: { size: 10, color: '#666' },
+                    bgcolor: 'rgba(255,255,255,0.7)',
+                    borderpad: 2
+                });
+            });
+            return { shapes, annotations };
+        }
+
         function drawPlot() {
-            const traces = buildTraces(null, null, false, false);
+            const distMode = dom.distModeToggle.checked;
+            const traces = buildTraces(null, null, false);
+            const { shapes, annotations } = buildDateChangeLayout();
             const layout = {
-                xaxis:  { type: 'date', rangeslider: { visible: false }, fixedrange: false },
+                xaxis:  distMode
+                    ? { title: 'Distancia (m)', type: 'linear', fixedrange: false }
+                    : { type: 'date', rangeslider: { visible: false }, fixedrange: false },
                 yaxis:  { title: 'km/h', range: [0, 150], fixedrange: true },
                 yaxis2: { title: 'm/s²', range: [-3, 3], overlaying: 'y', side: 'right',
                           visible: false, showgrid: false, fixedrange: true },
                 hovermode: 'closest',
                 height: 480,
                 margin: { t: 30, b: 20, l: 50, r: 50 },
-                legend: { orientation: 'h', y: 1.15 }
+                legend: { orientation: 'h', y: 1.15 },
+                shapes,
+                annotations
             };
             const config = {
                 responsive: true, displaylogo: false,
@@ -1142,21 +1635,38 @@
             Plotly.newPlot('mainChart', traces, layout, config);
 
             document.getElementById('mainChart').on('plotly_relayout', e => {
-                // Solo reaccionar a cambios reales del rango X
                 if (!('xaxis.range[0]' in e) && !('xaxis.autorange' in e)) return;
 
                 let s = null, n = null;
+                const distMode = dom.distModeToggle.checked;
+
                 if (e['xaxis.range[0]'] != null && !e['xaxis.autorange']) {
-                    s = new Date(e['xaxis.range[0]']).getTime();
-                    n = new Date(e['xaxis.range[1]']).getTime();
+                    if (!distMode) {
+                        // Modo tiempo: rango X son fechas
+                        s = new Date(e['xaxis.range[0]']).getTime();
+                        n = new Date(e['xaxis.range[1]']).getTime();
+                    } else {
+                        // Modo distancia: rango X son metros → convertir a timestamps
+                        const relDist  = dom.relDistToggle.checked;
+                        const distBase = relDist && chartFull.dist.length ? chartFull.dist[0] : 0;
+                        const dLo = parseFloat(e['xaxis.range[0]']) + distBase;
+                        const dHi = parseFloat(e['xaxis.range[1]']) + distBase;
+                        const full = chartFull;
+                        // Búsqueda del primer índice con dist >= dLo
+                        let iLo = 0;
+                        while (iLo < full.dist.length - 1 && full.dist[iLo] < dLo) iLo++;
+                        // Búsqueda del último índice con dist <= dHi
+                        let iHi = full.dist.length - 1;
+                        while (iHi > 0 && full.dist[iHi] > dHi) iHi--;
+                        // Garantizar rango válido
+                        if (iLo > iHi) iHi = Math.min(iLo + 1, full.dist.length - 1);
+                        s = full.ts[iLo];
+                        n = full.ts[iHi];
+                    }
                 }
                 currentRange = [s, n];
-
-                // Durante el arrastre: re-decimar y redibujar series con Plotly.react
-                // (muy rápido: solo actualiza datos, no recrea el SVG/WebGL)
                 redrawDecimated(s, n);
 
-                // Tabla: diferida hasta que el usuario suelta
                 if (tableDebounce) clearTimeout(tableDebounce);
                 tableDebounce = setTimeout(() => {
                     tableDebounce = null;
@@ -1169,34 +1679,54 @@
         function redrawDecimated(tsStart, tsEnd) {
             if (!chartFull || !chartMarkers) return;
             const accel      = dom.accelToggle.checked;
-            const smooth     = dom.smoothToggle.checked;
+            const distMode   = dom.distModeToggle.checked;
             const showPoints = dom.showPointsToggle.checked;
             const { px, preal, pctrl, pif, pdist, pctrlActivo, sliceAccX, sliceAccY } =
                 decimateRange(tsStart, tsEnd);
 
-            const cdReal = (() => {
-                const relDist  = dom.relDistToggle.checked;
-                const distBase = relDist && pdist.length ? pdist[0] : 0;
-                return pdist.map((d, i) => [d - distBase, decodeCtrlActivo(pctrlActivo[i])]);
-            })();
+            // Si no hay datos en el rango visible, no redibujar
+            if (!px || px.length === 0) return;
+
+            const relDist  = dom.relDistToggle.checked;
+            const distBase = relDist && pdist.length ? pdist[0] : 0;
+            const pxAxis   = distMode ? pdist.map(d => d - distBase) : px;
+            const cdReal   = pdist.map((d, i) => [d - distBase, decodeCtrlActivo(pctrlActivo[i])]);
             const withPts   = showPoints ? 'lines+markers' : 'lines';
-            const hvShape   = smooth ? 'spline' : 'hv';
             const markerDot = { size: 5, opacity: 0.7 };
+
+            const { sx: csx, sy: csy } = stairDown(pxAxis, pctrl);
+            const { sx: isx, sy: isy } = stairDown(pxAxis, pif);
+
+            const accX = distMode ? sliceAccX.map(d => {
+                const t = d instanceof Date ? d.getTime() : d;
+                const full = chartFull;
+                let lo = 0, hi = full.ts.length - 1;
+                while (lo < hi) { const m = (lo+hi)>>1; if (full.ts[m] < t) lo=m+1; else hi=m; }
+                return full.dist[lo] - distBase;
+            }) : sliceAccX;
+
+            // Coordenadas X de marcadores según modo
+            const mk = chartMarkers;
+            const mkBx  = distMode ? mk.bd.map(d => d - distBase) : mk.bx;
+            const mkRx  = distMode ? mk.rd.map(d => d - distBase) : mk.rx;
+            const mkAx  = distMode ? mk.ad.map(d => d - distBase) : mk.ax;
+            const mkRbx = distMode ? mk.rbd.map(d => d - distBase) : mk.rbx;
+            const mkOcx = distMode ? mk.ocd.map(d => d - distBase) : mk.ocx;
 
             // Trazas 0-2
             Plotly.restyle('mainChart', {
-                x:            [px,     px,    px   ],
-                y:            [preal,  pctrl, pif  ],
+                x:            [pxAxis, csx,   isx  ],
+                y:            [preal,  csy,   isy  ],
                 customdata:   [cdReal, pdist, pdist],
                 mode:         [withPts, withPts, withPts],
-                'line.shape': ['linear', hvShape, hvShape],
+                'line.shape': ['linear', 'linear', 'linear'],
                 marker:       [markerDot, markerDot, markerDot],
                 visible:      [true,  !accel, !accel]
             }, [0, 1, 2]);
 
             // Traza 4: aceleración + visibilidad eje Y2
             Plotly.restyle('mainChart', {
-                x:            [sliceAccX],
+                x:            [accX],
                 y:            [sliceAccY],
                 mode:         [withPts],
                 'line.shape': ['linear'],
@@ -1205,19 +1735,39 @@
             }, [4]);
             Plotly.relayout('mainChart', { 'yaxis2.visible': accel });
 
-            // Trazas 3, 5 y 6: marcadores — siempre desde chartMarkers (nunca de gd.data)
+            // Filtrar marcadores de freno de emergencia si el toggle está activo
+            const ebOnlyMoving = dom.ebMovingToggle.checked;
+            let ebx = distMode ? mk.ebd.map(d => d - distBase) : mk.ebx;
+            let eby = mk.eby, ebt = mk.ebt;
+            if (ebOnlyMoving && chartFull) {
+                const full = chartFull;
+                const filtered = { x: [], y: [], t: [] };
+                for (let i = 0; i < mk.ebx.length; i++) {
+                    const tsEB = mk.ebx[i].getTime();
+                    let lo = 0, hi = full.ts.length - 1;
+                    while (lo < hi) {
+                        const mid = (lo + hi) >> 1;
+                        if (full.ts[mid] < tsEB) lo = mid + 1; else hi = mid;
+                    }
+                    if (full.real[lo] > 10) {
+                        filtered.x.push(distMode ? mk.ebd[i] - distBase : mk.ebx[i]);
+                        filtered.y.push(mk.eby[i]);
+                        filtered.t.push(mk.ebt[i]);
+                    }
+                }
+                ebx = filtered.x; eby = filtered.y; ebt = filtered.t;
+            }
+
+            // Trazas 3, 5, 6, 7, 8, 9: marcadores
             Plotly.restyle('mainChart', {
-                x:          [chartMarkers.bx,  chartMarkers.ebx, chartMarkers.rx],
-                y:          [chartMarkers.by,  chartMarkers.eby, chartMarkers.ry],
-                customdata: [chartMarkers.bt,  chartMarkers.ebt, chartMarkers.rt],
-                visible:    [true, true, true]
-            }, [3, 5, 6]);
+                x:          [mkBx,     ebx,  mkRx,        mkAx,        mkRbx,       mkOcx],
+                y:          [mk.by,    eby,  mk.ry,       mk.ay,       mk.rby,      mk.ocy],
+                customdata: [mk.bt,    ebt,  mk.rt,       mk.at,       mk.rbt,      mk.oct],
+                visible:    [true, true, true, true, true, true]
+            }, [3, 5, 6, 7, 8, 9]);
         }
 
         dom.accelToggle.onchange = function () {
-            redrawDecimated(currentRange[0], currentRange[1]);
-        };
-        dom.smoothToggle.onchange = function () {
             redrawDecimated(currentRange[0], currentRange[1]);
         };
         dom.showPointsToggle.onchange = function () {
@@ -1225,6 +1775,24 @@
         };
         dom.relDistToggle.onchange = function () {
             redrawDecimated(currentRange[0], currentRange[1]);
+            refreshTables(currentRange[0], currentRange[1]);
+        };
+        dom.ebMovingToggle.onchange = function () {
+            redrawDecimated(currentRange[0], currentRange[1]);
+        };
+        dom.distModeToggle.onchange = function () {
+            // Al cambiar eje distancia (activar o desactivar), resetear el resto de checkboxes
+            dom.accelToggle.checked      = false;
+            dom.showPointsToggle.checked = false;
+            dom.ebMovingToggle.checked   = false;
+            dom.relDistToggle.checked    = false;
+            // Ocultar/mostrar checkbox de distancia relativa
+            document.getElementById('relDistLabel').style.display =
+                this.checked ? 'none' : '';
+            // Cambiar tipo de eje requiere redibujar la gráfica completa
+            currentRange = [null, null];
+            drawPlot();
+            refreshTables(null, null);
         };
 
         dom.btnExportImg.onclick = () => {
@@ -1239,19 +1807,291 @@
         let filteredData  = [];      // subconjunto activo (resultado del filtro)
         let renderedUpto  = 0;       // cuántas filas hay ya en el DOM
         let scrollObserver = null;   // IntersectionObserver del sentinel
+        let tableDistBaseGlobal = 0; // base para distancia relativa en tabla
+
+        // Estado para el listado de errores (scroll infinito independiente)
+        let errorsData      = [];
+        let errorsRendered  = 0;
+        let errorsObserver  = null;
+
+        // ============================================================
+        // VISOR HEX
+        // ============================================================
+        function buildHexView(bytes, badDist, distCalc) {
+            // ── helpers little-endian ──────────────────────────────────
+            const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+            const u16 = off => dv.getUint16(off, true);
+            const u32 = off => dv.getUint32(off, true);
+            const i32 = off => dv.getInt32 (off, true);
+            const h   = (n, pad=2) => n.toString(16).toUpperCase().padStart(pad, '0');
+            const hB  = off => h(bytes[off]);
+
+            // ── hexdump (30 bytes, 16 por línea) ──────────────────────
+            const COL = 16;
+            let dumpHtml = '';
+            for (let row = 0; row < Math.ceil(bytes.length / COL); row++) {
+                const start = row * COL;
+                const end   = Math.min(start + COL, bytes.length);
+                const slice = bytes.slice(start, end);
+                const offset = h(start, 4);
+
+                let hexPart = '';
+                for (let i = 0; i < COL; i++) {
+                    if (i === 8) hexPart += '  ';
+                    if (i > 0 && i !== 8) hexPart += ' ';
+                    hexPart += (i < slice.length) ? h(slice[i]) : '  ';
+                }
+
+                let asciiPart = '';
+                for (let i = 0; i < slice.length; i++) {
+                    const b = slice[i];
+                    asciiPart += (b >= 32 && b < 127) ? String.fromCharCode(b) : '·';
+                }
+
+                dumpHtml +=
+                    `<span class="hx-offset">${offset}  </span>` +
+                    `<span class="hx-hex">${hexPart}</span>` +
+                    `<span class="hx-sep">  │  </span>` +
+                    `<span class="hx-ascii">${esc(asciiPart)}</span>\n`;
+            }
+
+            // ── tabla de campos con valores interpretados (LE) ────────
+            // Estructura del paquete CLS (30 bytes, little-endian):
+            //  0- 1  UINT16  Sincronismo       = 0xDCBA
+            //  2- 5  UINT32  Número de paquete
+            //  6- 7  UINT16  Código de variable
+            //  8-11  UINT32  Tiempo (segundos desde epoch)
+            // 12-13  UINT16  Tiempo (milisegundos)
+            // 14-17  UINT32  Distancia diferencial
+            // 18-21  INT32   Valor del dato
+            // 22-23  UINT16  Velocidad real (km/h)
+            // 24-25  UINT16  Velocidad de control (km/h)
+            // 26-27  UINT16  Velocidad de intervención (km/h)
+            // 28-29  UINT16  Checksum del paquete
+
+            const sync   = u16(0);
+            const pNum   = u32(2);
+            const varCode= u16(6);
+            const tSec   = u32(8);
+            const tMs    = u16(12);
+            const dist   = u32(14);
+            const val    = i32(18);
+            const vReal  = u16(22);
+            const vCtrl  = u16(24);
+            const vInterv= u16(26);
+            const ckSum  = u16(28);
+
+            // Suma de bytes 2..27 para verificar CK localmente
+            let localSum = 0;
+            for (let i = 2; i <= 27; i++) localSum += bytes[i];
+            const ckOK = (localSum & 0xFFFF) === ckSum;
+
+            // Fecha/hora del paquete
+            const dtObj  = new Date(tSec * 1000 + tMs);
+            const dtStr  = dtObj.toLocaleString('es-ES');
+
+            // Bytes como strings hex (en orden de memoria, LE)
+            const bStr = (off, len) =>
+                Array.from(bytes.slice(off, off + len))
+                     .map(b => h(b))
+                     .join(' ');
+
+            const fields = [
+                { off:'0x00–0x01', size:'UINT16', bytes: bStr(0,2),
+                  valHex:`0x${h(sync,4)}`,
+                  valDec: String(sync),
+                  desc: 'Sincronismo',
+                  note: sync === 0xDCBA ? '✔ correcto' : '✘ inesperado' },
+                { off:'0x02–0x05', size:'UINT32', bytes: bStr(2,4),
+                  valHex:`0x${h(pNum,8)}`,
+                  valDec: String(pNum),
+                  desc: 'Número de paquete', note: '' },
+                { off:'0x06–0x07', size:'UINT16', bytes: bStr(6,2),
+                  valHex:`0x${h(varCode,4)}`,
+                  valDec: String(varCode),
+                  desc: 'Código de variable',
+                  note: esc(VAR_MAP[varCode] || 'Desconocida') },
+                { off:'0x08–0x0B', size:'UINT32', bytes: bStr(8,4),
+                  valHex:`0x${h(tSec,8)}`,
+                  valDec: String(tSec) + ' s',
+                  desc: 'Tiempo (segundos)',
+                  note: esc(dtStr) },
+                { off:'0x0C–0x0D', size:'UINT16', bytes: bStr(12,2),
+                  valHex:`0x${h(tMs,4)}`,
+                  valDec: String(tMs) + ' ms',
+                  desc: 'Tiempo (milisegundos)', note: '' },
+                { off:'0x0E–0x11', size:'UINT32', bytes: bStr(14,4),
+                  valHex:`0x${h(dist,8)}`,
+                  valDec: String(dist),
+                  desc: 'Distancia diferencial',
+                  note: badDist
+                        ? `<span style="color:#856404">⚠ valor anómalo — 10× superior a la dist. estimada (${distCalc} m) — ignorado</span>`
+                        : '' },
+                { off:'0x12–0x15', size:'INT32',  bytes: bStr(18,4),
+                  valHex:`0x${h(val >>> 0, 8)}`,
+                  valDec: String(val),
+                  desc: 'Valor del dato', note: '' },
+                { off:'0x16–0x17', size:'UINT16', bytes: bStr(22,2),
+                  valHex:`0x${h(vReal,4)}`,
+                  valDec: String(vReal) + ' km/h',
+                  desc: 'Velocidad real', note: '' },
+                { off:'0x18–0x19', size:'UINT16', bytes: bStr(24,2),
+                  valHex:`0x${h(vCtrl,4)}`,
+                  valDec: String(vCtrl) + ' km/h',
+                  desc: 'Velocidad de control', note: '' },
+                { off:'0x1A–0x1B', size:'UINT16', bytes: bStr(26,2),
+                  valHex:`0x${h(vInterv,4)}`,
+                  valDec: String(vInterv) + ' km/h',
+                  desc: 'Velocidad de intervención', note: '' },
+                { off:'0x1C–0x1D', size:'UINT16', bytes: bStr(28,2),
+                  valHex:`0x${h(ckSum,4)}`,
+                  valDec: String(ckSum),
+                  desc: 'Checksum',
+                  note: ckOK
+                        ? '<span style="color:#28a745">✔ OK</span>'
+                        : `<span style="color:#dc3545">✘ ERROR (calc: 0x${h(localSum & 0xFFFF, 4)})</span>` }
+            ];
+
+            const tdS = 'style="padding:2px 10px 2px 0;white-space:nowrap;font-family:Consolas,monospace;font-size:11px;"';
+            const thS = 'style="text-align:left;padding:3px 10px 3px 0;color:#888;font-weight:700;font-size:10px;border-bottom:1px solid #dee2e6;"';
+
+            let legend =
+                `<table style="margin-top:8px;border-collapse:collapse;width:100%;">` +
+                `<thead><tr>` +
+                  `<th ${thS}>Offset</th>` +
+                  `<th ${thS}>Tipo</th>` +
+                  `<th ${thS}>Bytes (memoria)</th>` +
+                  `<th ${thS}>Valor hex</th>` +
+                  `<th ${thS}>Valor dec</th>` +
+                  `<th ${thS}>Campo</th>` +
+                  `<th ${thS}>Nota</th>` +
+                `</tr></thead><tbody>`;
+
+            fields.forEach((f, i) => {
+                const bg = i % 2 === 0 ? '' : 'background:#f8f9fa;';
+                legend +=
+                    `<tr style="${bg}">` +
+                    `<td ${tdS} style="padding:2px 10px 2px 0;white-space:nowrap;font-family:Consolas,monospace;font-size:11px;color:#888;">${f.off}</td>` +
+                    `<td ${tdS} style="padding:2px 10px 2px 0;white-space:nowrap;font-family:Consolas,monospace;font-size:11px;color:#666;">${f.size}</td>` +
+                    `<td ${tdS} style="padding:2px 10px 2px 0;white-space:nowrap;font-family:Consolas,monospace;font-size:11px;color:#0056b3;letter-spacing:.05em;">${f.bytes}</td>` +
+                    `<td ${tdS} style="padding:2px 10px 2px 0;white-space:nowrap;font-family:Consolas,monospace;font-size:11px;color:#333;">${f.valHex}</td>` +
+                    `<td ${tdS} style="padding:2px 10px 2px 0;white-space:nowrap;font-family:Consolas,monospace;font-size:11px;color:#333;">${f.valDec}</td>` +
+                    `<td style="padding:2px 10px 2px 0;white-space:nowrap;font-size:11px;color:#333;">${f.desc}</td>` +
+                    `<td style="padding:2px 0;font-size:11px;color:#555;">${f.note}</td>` +
+                    `</tr>`;
+            });
+
+            legend += `</tbody></table>`;
+
+            return `<div class="hex-viewer">${dumpHtml}</div>${legend}`;
+        }
+
+        function buildDecodedView(p) {
+            const fields = [
+                ['#Paquete',      p.pN],
+                ['Fecha',         esc(p.dtS)],
+                ['Hora',          esc(p.tmS)],
+                ['Milisegundos',  p.ms],
+                ['Código var.',   `0x${p.vC.toString(16).toUpperCase()}`],
+                ['Variable',      esc(VAR_MAP[p.vC] || 'Desconocida')],
+                ['Valor',         p.val],
+                ['Dist. dif. (dd)', p.dd + (p.badDist
+                    ? `<br><span style="color:#856404;font-size:10px;font-family:Consolas,monospace;">dd anómalo — 10× superior a la estimada (${Math.round(p.distCalcRef)} m) — ignorado</span>`
+                    : '')],
+                ['V.Real (km/h)', p.vr],
+                ['V.Control',     p.vc],
+                ['V.Interv.',     p.vi],
+                ['Control Activo',esc(decodeCtrlActivo(p.ctrlActivo))],
+                ['Checksum',      p.ckOK ? '<span style="color:#28a745">OK</span>' : '<span style="color:#dc3545">ERROR</span>']
+            ];
+            return '<div class="pkt-decoded-grid">' +
+                fields.map(([k, v]) =>
+                    `<div><span class="dk">${k}:</span> <span class="dv">${v}</span></div>`
+                ).join('') +
+            '</div>';
+        }
+
+        // ID único por fila para gestionar apertura/cierre
+        let _rowUid = 0;
 
         function rowHTML(p) {
+            const uid   = ++_rowUid;
             const isEB  = (p.vC === 0xFF20 && p.val === 1);
-            const ckHTML = p.ckOK
+
+            // Clase de fila: emergencia tiene prioridad sobre dist. inválida
+            const rowClass = isEB ? ' row-emergency' : (p.badDist ? ' row-baddist' : '');
+
+            // Columna CK: checksum + aviso de distancia inválida si procede
+            let ckHTML = p.ckOK
                 ? '<span style="color:#28a745">OK</span>'
-                : '<span style="color:#dc3545">ERROR</span>';
-            return `<tr${isEB ? ' class="row-emergency"' : ''}>` +
+                : '<span style="color:#dc3545">ERR CK</span>';
+            if (p.badDist) {
+                ckHTML += ' <span title="Distancia diferencial anómala (supera el doble de la estimada) — ignorada" ' +
+                          'style="color:#856404;cursor:help;">⚠ dd</span>';
+            }
+
+            const mainRow =
+                `<tr class="pkt-row${rowClass}" onclick="togglePktDetail(${uid})" data-uid="${uid}">` +
                 `<td>${p.pN}</td><td>${esc(p.dtS)}</td><td>${esc(p.tmS)}</td>` +
                 `<td>${p.ms}</td><td>0x${p.vC.toString(16).toUpperCase()}</td>` +
                 `<td>${esc(VAR_MAP[p.vC] || 'Var')}</td><td>${p.val}</td>` +
-                `<td>${p.dist}</td><td>${p.vr}</td><td>${p.vc}</td>` +
+                `<td>${p.dist - tableDistBaseGlobal}</td><td>${p.vr}</td><td>${p.vc}</td>` +
                 `<td>${p.vi}</td><td>${esc(decodeCtrlActivo(p.ctrlActivo))}</td>` +
                 `<td>${ckHTML}</td></tr>`;
+
+            // Pre-renderizar contenido de pestañas (hex bytes en data-attribute para lazy render)
+            const colSpan = 13;
+            const hexB64  = p.hexBytes ? btoa(String.fromCharCode(...p.hexBytes)) : '';
+
+            const detailRow =
+                `<tr class="pkt-detail" id="pkt-detail-${uid}" style="display:none;">` +
+                `<td colspan="${colSpan}">` +
+                  `<div class="pkt-tabs">` +
+                    `<button class="pkt-tab-btn active" onclick="switchTab(event,${uid},'decoded')">📋 Decodificado</button>` +
+                    `<button class="pkt-tab-btn"        onclick="switchTab(event,${uid},'hex')">🔢 Hex</button>` +
+                  `</div>` +
+                  `<div class="pkt-tab-panel active" id="pkt-tab-decoded-${uid}">` +
+                    buildDecodedView(p) +
+                  `</div>` +
+                  `<div class="pkt-tab-panel" id="pkt-tab-hex-${uid}" data-hexb64="${hexB64}" data-baddist="${p.badDist ? 1 : 0}" data-distcalc="${Math.round(p.distCalcRef || 0)}" data-rendered="0"></div>` +
+                `</td></tr>`;
+
+            return mainRow + detailRow;
+        }
+
+        function togglePktDetail(uid) {
+            const row = document.getElementById(`pkt-detail-${uid}`);
+            if (!row) return;
+            const isHidden = row.style.display === 'none';
+            row.style.display = isHidden ? '' : 'none';
+        }
+
+        function switchTab(event, uid, tab) {
+            event.stopPropagation();
+            const detailRow = document.getElementById(`pkt-detail-${uid}`);
+            if (!detailRow) return;
+
+            // Activar botones
+            detailRow.querySelectorAll('.pkt-tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Activar paneles
+            detailRow.querySelectorAll('.pkt-tab-panel').forEach(p => p.classList.remove('active'));
+            const panel = document.getElementById(`pkt-tab-${tab}-${uid}`);
+            if (panel) {
+                panel.classList.add('active');
+                // Renderizado lazy del hex para no generar HTML innecesario al cargar la tabla
+                if (tab === 'hex' && panel.dataset.rendered === '0') {
+                    const b64      = panel.dataset.hexb64;
+                    if (b64) {
+                        const bytes     = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+                        const badDist   = panel.dataset.baddist === '1';
+                        const distCalc  = parseInt(panel.dataset.distcalc || '0', 10);
+                        panel.innerHTML = buildHexView(bytes, badDist, distCalc);
+                    }
+                    panel.dataset.rendered = '1';
+                }
+            }
         }
 
         function appendNextPage() {
@@ -1280,6 +2120,89 @@
                 if (entries[0].isIntersecting) appendNextPage();
             }, { root: container, threshold: 0.1 });
             scrollObserver.observe(sentinel);
+        }
+
+        // ============================================================
+        // LISTADO DE ERRORES
+        // ============================================================
+        function rowErrorHTML(p) {
+            const uid   = ++_rowUid;
+            const reasons = [];
+            if (!p.ckOK)    reasons.push('<span style="color:#dc3545;font-weight:600;">Checksum incorrecto</span>');
+            if (p.badDist)  reasons.push(`<span style="color:#856404;font-weight:600;">Dist. anómala (est. ${Math.round(p.distCalcRef)} m)</span>`);
+
+            const rowClass = !p.ckOK ? ' row-emergency' : ' row-baddist';
+
+            let ckHTML = p.ckOK
+                ? '<span style="color:#28a745">OK</span>'
+                : '<span style="color:#dc3545">ERR CK</span>';
+            if (p.badDist) ckHTML += ' <span style="color:#856404;">⚠ dd</span>';
+
+            const colSpan = 13;
+            const hexB64  = p.hexBytes ? btoa(String.fromCharCode(...p.hexBytes)) : '';
+
+            const mainRow =
+                `<tr class="pkt-row${rowClass}" onclick="togglePktDetail(${uid})" data-uid="${uid}">` +
+                `<td>${p.pN}</td><td>${esc(p.dtS)}</td><td>${esc(p.tmS)}</td>` +
+                `<td>${p.ms}</td><td>0x${p.vC.toString(16).toUpperCase()}</td>` +
+                `<td>${esc(VAR_MAP[p.vC] || 'Var')}</td><td>${p.val}</td>` +
+                `<td>${p.dist}</td><td>${p.vr}</td><td>${p.vc}</td>` +
+                `<td>${p.vi}</td>` +
+                `<td>${ckHTML}</td>` +
+                `<td>${reasons.join(' + ')}</td></tr>`;
+
+            const detailRow =
+                `<tr class="pkt-detail" id="pkt-detail-${uid}" style="display:none;">` +
+                `<td colspan="${colSpan}">` +
+                  `<div class="pkt-tabs">` +
+                    `<button class="pkt-tab-btn active" onclick="switchTab(event,${uid},'decoded')">📋 Decodificado</button>` +
+                    `<button class="pkt-tab-btn"        onclick="switchTab(event,${uid},'hex')">🔢 Hex</button>` +
+                  `</div>` +
+                  `<div class="pkt-tab-panel active" id="pkt-tab-decoded-${uid}">` +
+                    buildDecodedView(p) +
+                  `</div>` +
+                  `<div class="pkt-tab-panel" id="pkt-tab-hex-${uid}" data-hexb64="${hexB64}" data-baddist="${p.badDist ? 1 : 0}" data-distcalc="${Math.round(p.distCalcRef || 0)}" data-rendered="0"></div>` +
+                `</td></tr>`;
+
+            return mainRow + detailRow;
+        }
+
+        function appendNextErrorPage() {
+            if (errorsRendered >= errorsData.length) return;
+            const end = Math.min(errorsRendered + PAGE_SIZE, errorsData.length);
+            let html = '';
+            for (let i = errorsRendered; i < end; i++) html += rowErrorHTML(errorsData[i]);
+            document.getElementById('errorsBody').insertAdjacentHTML('beforeend', html);
+            errorsRendered = end;
+            const total = errorsData.length;
+            const bar = document.getElementById('renderProgressErr');
+            bar.style.width = (errorsRendered < total) ? (errorsRendered / total * 100) + '%' : '0%';
+        }
+
+        function initErrorsScrollObserver() {
+            if (errorsObserver) errorsObserver.disconnect();
+            const sentinel  = document.getElementById('scrollSentinelErr');
+            const container = sentinel.closest('.table-container');
+            errorsObserver = new IntersectionObserver(entries => {
+                if (entries[0].isIntersecting) appendNextErrorPage();
+            }, { root: container, threshold: 0.1 });
+            errorsObserver.observe(sentinel);
+        }
+
+        function rebuildErrorsList() {
+            errorsData     = rawData.filter(p => !p.ckOK || p.badDist);
+            errorsRendered = 0;
+            document.getElementById('errorsBody').innerHTML = '';
+            document.getElementById('renderProgressErr').style.width = '0%';
+            // Badge y contador en cabecera
+            const n = errorsData.length;
+            document.getElementById('errBadge').textContent  = n;
+            document.getElementById('errorsCount').textContent =
+                n === 0 ? 'Sin errores' : `${n} paquete${n !== 1 ? 's' : ''} con error`;
+            // Ocultar/mostrar botón según si hay errores
+            dom.btnShowErrors.style.display = n > 0 ? '' : 'none';
+            appendNextErrorPage();
+            initErrorsScrollObserver();
         }
 
         // ============================================================
@@ -1355,8 +2278,7 @@
             }
 
             dom.stats.textContent =
-                `ARCHIVO: ${rawData.length} PAQS | TRAMO: ${countVisible} | ` +
-                `Checksum cabecera: ${headerChecksumOK ? 'OK' : 'ERROR'}`;
+                `ARCHIVO: ${rawData.length} PAQS | TRAMO: ${countVisible}`;
 
             // Tabla resumen
             dom.summaryBody.innerHTML = Object.keys(counts)
@@ -1371,12 +2293,31 @@
                 ).join('');
 
             // Tabla de detalle: reset y primera página
+            const relDist = dom.relDistToggle.checked;
+            // Base = distancia del primer paquete del tramo (sin filtro de variable)
+            let tableDistBase = 0;
+            if (relDist) {
+                // Buscar el primer paquete en el tramo temporal visible
+                for (let i = 0; i < rawData.length; i++) {
+                    const p = rawData[i];
+                    const inTime = !zoomTime || (p.ts >= s && p.ts <= n);
+                    if (inTime) { tableDistBase = p.dist; break; }
+                }
+            }
+            // Actualizar cabecera columna distancia
+            const distColLabel = hasDistData
+                ? (relDist ? 'Dist rel. (m)' : 'Dist (m)')
+                : (relDist ? 'Dist calc. rel. (m)' : 'Dist calc. (m)');
+            document.getElementById('thDist').textContent = distColLabel;
+
             filteredData = newFiltered;
+            tableDistBaseGlobal = tableDistBase;
             renderedUpto = 0;
             dom.packets.innerHTML = '';
             dom.progressBar.style.width = '0%';
             appendNextPage();      // carga las primeras PAGE_SIZE filas
             initScrollObserver();  // el resto se carga al hacer scroll
+            rebuildErrorsList();   // reconstruir listado de errores
         }
 
         // ============================================================
@@ -1394,14 +2335,25 @@
             });
             refreshTables(currentRange[0], currentRange[1]);
         };
-        dom.btnShowSummary.onclick = () => {
-            document.getElementById('summaryWrapper').style.display = 'block';
-            document.getElementById('detailsWrapper').style.display = 'none';
-        };
-        dom.btnShowDetails.onclick = () => {
-            document.getElementById('summaryWrapper').style.display = 'none';
-            document.getElementById('detailsWrapper').style.display = 'block';
-        };
+        // ── Helper para activar vista y marcar botón activo ──────────
+        function switchView(view) {
+            document.getElementById('summaryWrapper').style.display = view === 'summary'  ? 'block' : 'none';
+            document.getElementById('detailsWrapper').style.display = view === 'details'  ? 'block' : 'none';
+            document.getElementById('errorsWrapper') .style.display = view === 'errors'   ? 'block' : 'none';
+
+            dom.btnShowSummary.className = 'btn ' + (view === 'summary' ? 'btn-primary' : 'btn-outline');
+            dom.btnShowDetails.className = 'btn ' + (view === 'details' ? 'btn-primary' : 'btn-outline');
+
+            // Botón errores: estilo propio (ámbar)
+            const isErr = view === 'errors';
+            dom.btnShowErrors.style.background    = isErr ? '#ffc107' : 'white';
+            dom.btnShowErrors.style.color         = isErr ? '#333'    : '#856404';
+            dom.btnShowErrors.style.borderColor   = '#ffc107';
+        }
+
+        dom.btnShowSummary.onclick = () => switchView('summary');
+        dom.btnShowDetails.onclick = () => switchView('details');
+        dom.btnShowErrors .onclick = () => switchView('errors');
 
         // ============================================================
         // EXPORTAR CSV
@@ -1425,6 +2377,94 @@
             a.download = 'analisis_asfa.csv';
             a.click();
         };
+
+        // ============================================================
+        // LOGIN / LOGOUT
+        // ============================================================
+        let currentUser = '';
+
+        function calcPassword(user) {
+            // Contraseña = suma de: charCode(c_i) * (pos_i + (año - 2000))
+            const anio   = new Date().getFullYear();
+            const offset = anio - 2000;
+            let suma = 0;
+            for (let i = 0; i < user.length; i++) {
+                suma += user.charCodeAt(i) * (i + 1 + offset);
+            }
+            return suma;
+        }
+
+        function doLogin() {
+            const user  = document.getElementById('login-user').value.trim();
+            const pass  = document.getElementById('login-pass').value.trim();
+            const errEl = document.getElementById('login-error');
+
+            if (!user) {
+                errEl.textContent = 'Introduce un nombre de usuario.';
+                errEl.classList.add('visible');
+                document.getElementById('login-user').focus();
+                return;
+            }
+
+            const expected = calcPassword(user);
+            const entered  = parseInt(pass, 10);
+
+            if (!isNaN(entered) && entered === expected) {
+                currentUser = user;
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('header-user').textContent = user;
+                errEl.classList.remove('visible');
+            } else {
+                errEl.textContent = 'Usuario o contraseña incorrectos.';
+                errEl.classList.add('visible');
+                document.getElementById('login-pass').value = '';
+                document.getElementById('login-pass').focus();
+            }
+        }
+
+        function doLogout() {
+            currentUser = '';
+            document.getElementById('login-user').value = '';
+            document.getElementById('login-pass').value = '';
+            document.getElementById('login-error').classList.remove('visible');
+            document.getElementById('header-user').textContent = '';
+            // Resetear estado de la aplicación
+            rawData      = [];
+            chartFull    = null;
+            chartMarkers = null;
+            currentRange  = [null, null];
+            selectedVars  = new Set();
+            totalInFile   = 0;
+            headerChecksumOK = true;
+            hasDistData   = true;
+            document.getElementById('headerSection').style.display  = 'none';
+            document.getElementById('chartsSection').style.display  = 'none';
+            document.getElementById('tablesSection').style.display  = 'none';
+            dom.status.textContent = 'Cargar el fichero de registro CLS para analizar';
+            dom.status.classList.remove('status-error');
+            dom.spinner.style.display = 'none';
+            document.getElementById('login-overlay').classList.remove('hidden');
+            document.getElementById('login-user').focus();
+        }
+
+        // ============================================================
+        // ZOOM
+        // ============================================================
+        let _zoomLevel = 1.0;
+        function _applyZoom() {
+            document.body.style.zoom = _zoomLevel;
+            document.getElementById('zoom-label').textContent = Math.round(_zoomLevel * 100) + '%';
+        }
+        function zoomIn()    { _zoomLevel = Math.min((_zoomLevel + 0.1), 2.0); _applyZoom(); }
+        function zoomOut()   { _zoomLevel = Math.max((_zoomLevel - 0.1), 0.5); _applyZoom(); }
+        function zoomReset() { _zoomLevel = 1.0; _applyZoom(); }
+
+        // Zoom con teclado (Ctrl++ / Ctrl+- / Ctrl+0)
+        document.addEventListener('keydown', e => {
+            if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomIn(); }
+            if (e.ctrlKey &&  e.key === '-')                   { e.preventDefault(); zoomOut(); }
+            if (e.ctrlKey &&  e.key === '0')                   { e.preventDefault(); zoomReset(); }
+        });
     </script>
 </body>
 
