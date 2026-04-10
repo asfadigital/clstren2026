@@ -2,10 +2,11 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' data:; style-src 'self' 'unsafe-inline';">
     <title>Analizador CLS de ASFA Digital Embarcado</title>
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+    <script src="plotly-2.35.2.min.js" charset="utf-8"></script>
     <style>
         :root {
             --primary: #0056b3;
@@ -571,7 +572,7 @@
                             <input type="checkbox" id="showPointsToggle" style="width:20px;height:20px;"> Mostrar puntos
                         </label>
                         <label style="cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;">
-                            <input type="checkbox" id="ebMovingToggle" style="width:20px;height:20px;"> F.E. solo V.R > 10 km/h
+                            <input type="checkbox" id="ebMovingToggle" style="width:20px;height:20px;"> F.E. solo V.R > 5 km/h
                         </label>
                         <label style="cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;">
                             <input type="checkbox" id="distModeToggle" style="width:20px;height:20px;"> Eje distancia
@@ -580,6 +581,12 @@
                             <input type="checkbox" id="relDistToggle" style="width:20px;height:20px;"> Distancia relativa
                         </label>
                     <button class="btn btn-outline btn-sm" id="btnExportImg" title="Guardar gráfica como imagen PNG">📷 Exportar gráfica</button>
+                    <label style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px;">
+                        Esc. Y:
+                        <input type="number" id="yMaxInput" min="10" max="500" step="10" value="150"
+                            style="width:60px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+                        km/h
+                    </label>
                 </div>
                 <div class="stats-badge" id="globalStats">Esperando datos...</div>
             </div>
@@ -830,6 +837,7 @@
         let chartMarkers = null; // balizas y frenadas (pocos puntos, sin decimar)
         let dateChanges  = [];   // timestamps de cambio de fecha (medianoche) para la gráfica
         let currentRange  = [null, null];
+        let _exporting    = false;  // inhibe plotly_relayout durante exportación
         let selectedVars  = new Set();
         let totalInFile   = 0;
         let renderTimeout = null;  // reservado (compatibilidad futura)
@@ -837,9 +845,12 @@
         let headerChecksumOK = true;
         let hasDistData   = true;  // false = distancia calculada por vel×tiempo
 
-        const TRACE_IDX = { real: 0, ctrl: 1, interf: 2, baliza: 3, accel: 4, eb: 5, recon: 6, aumento: 7, rebase: 8, ocult: 9 };
-        const MAX_PLOT_PTS   = 3000;   // máximo de puntos en vista completa
-        const TABLE_DEBOUNCE = 500;    // ms de espera tras soltar el zoom
+        const TRACE_IDX = { real: 0, ctrl: 1, interf: 2, baliza: 3, accel: 4, eb: 5, aumento: 6, rebase: 7, ocult: 8, pulsa: 9 };
+        // Convierte timestamp ms a string ISO UTC que Plotly usa sin ajuste de zona horaria
+        const utcStr = t => { const d = new Date(t); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')+'T'+String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')+':'+String(d.getUTCSeconds()).padStart(2,'0')+'.'+String(d.getUTCMilliseconds()).padStart(3,'0'); };
+        const MAX_PLOT_PTS_FULL = 500;   // vista completa (>300k puntos)
+        const MAX_PLOT_PTS_ZOOM = 2000;  // máximo en zoom
+        const TABLE_DEBOUNCE = 800;    // ms de espera tras soltar el zoom
 
         // ============================================================
         // UTILIDADES
@@ -939,21 +950,20 @@
             const sliceDist     = full.dist.slice(lo, hi + 1);
             const sliceCtrlAct  = full.ctrlActivo.slice(lo, hi + 1);
 
-            const idxV = lttbIndices(sliceTs, sliceReal, MAX_PLOT_PTS);
+            // Umbral dinámico: más puntos cuanto mayor es el zoom
+            // En vista completa usa MAX_PLOT_PTS_FULL; en zoom profundo sube hasta MAX_PLOT_PTS_ZOOM
+            const sliceFraction = full.ts.length > 0 ? sliceTs.length / full.ts.length : 1;
+            const dynThreshold  = Math.round(
+                MAX_PLOT_PTS_ZOOM - (MAX_PLOT_PTS_ZOOM - MAX_PLOT_PTS_FULL) * Math.min(sliceFraction, 1)
+            );
+
+            const idxV = lttbIndices(sliceTs, sliceReal, dynThreshold);
             let px, preal, pctrl, pif, pdist, pctrlActivo;
             if (idxV) {
-                // Añadir índices donde ctrl o interf cruzan 0 (transición 0↔no-0)
-                // para que los apagados/desactivaciones de cabina no desaparezcan al decimar
-                const mandatory = new Set(idxV);
-                for (let i = 1; i < sliceCtrl.length; i++) {
-                    const ctrlCross = (sliceCtrl[i] === 0) !== (sliceCtrl[i - 1] === 0);
-                    const ifCross   = (sliceIf[i]   === 0) !== (sliceIf[i - 1]   === 0);
-                    if (ctrlCross || ifCross) {
-                        mandatory.add(i - 1);
-                        mandatory.add(i);
-                    }
-                }
-                const merged = Array.from(mandatory).sort((a, b) => a - b);
+                const idxC = lttbIndices(sliceTs, sliceCtrl, dynThreshold) || idxV;
+                const idxI = lttbIndices(sliceTs, sliceIf,   dynThreshold) || idxV;
+                const merged = Array.from(new Set([...idxV, ...idxC, ...idxI]))
+                    .sort((a, b) => a - b);
                 [px, preal, pctrl, pif, pdist, pctrlActivo] = applyIndices(merged, sliceX, sliceReal, sliceCtrl, sliceIf, sliceDist, sliceCtrlAct);
             } else {
                 px = sliceX; preal = sliceReal; pctrl = sliceCtrl; pif = sliceIf; pdist = sliceDist; pctrlActivo = sliceCtrlAct;
@@ -982,7 +992,7 @@
                 const accXSlice = full.accx.slice(aLo, aHi + 1);
                 const accYSlice = full.accy.slice(aLo, aHi + 1);
                 const accTsSlice = full.accts.slice(aLo, aHi + 1);
-                const idxAcc = lttbIndices(accTsSlice, accYSlice, MAX_PLOT_PTS);
+                const idxAcc = lttbIndices(accTsSlice, accYSlice, dynThreshold);
                 if (idxAcc) {
                     [sliceAccX, sliceAccY] = applyIndices(idxAcc, accXSlice, accYSlice);
                 } else {
@@ -1089,7 +1099,7 @@
             const modo = dv.getUint8(13);
             addH('Modo Sistema', `${modo} - ${esc(MODO_MAP[modo] || 'Desconocido')}`);
             addH('Nº Serie UT (BCD)', bcd(new Uint8Array(dv.buffer, 14, 2)));
-            addH('Número UIC',        bcd(new Uint8Array(dv.buffer, 16, 6)));
+            addH('Número UIC',        bcd(new Uint8Array(dv.buffer, 16, 6).reverse()));
             addH('Número Rama',       bcd(new Uint8Array(dv.buffer, 22, 2)));
             addH('Serie Equipo',      dv.getUint16(24, true));
             addH('Versión SW Equipo', esc(asc(new Uint8Array(dv.buffer, 26, 4))));
@@ -1107,7 +1117,11 @@
             document.getElementById('headerSection').style.display = 'block';
 
             // Parseo asíncrono por chunks para no bloquear el hilo en ficheros grandes
-            parseAsync(dv, fileName);
+            parseAsync(dv, fileName).catch(e => {
+                dom.status.innerHTML = `<span class="status-error">Error de parseo: ${esc(e.message)}</span>`;
+                dom.spinner.style.display = 'none';
+                console.error('parseAsync error:', e);
+            });
         }
 
         async function parseAsync(dv, fileName) {
@@ -1115,7 +1129,7 @@
 
             // ── Arrays de series completas (para gráfica, se decimarán) ──
             const full = {
-                x: [], ts: [], real: [], ctrl: [], interf: [], dist: [],
+                x: [], ts: [], real: [], ctrl: [], interf: [], dist: [], distRaw: [],
                 accx: [], accy: [], accts: [], ctrlActivo: []
             };
             // Marcadores (pocos puntos, no se deciman)
@@ -1125,12 +1139,14 @@
                 rx: [], ry: [], rt: [], rc: [], rd: [],
                 ax: [], ay: [], at: [], ad: [],
                 rbx: [], rby: [], rbt: [], rbd: [],
-                ocx: [], ocy: [], oct: [], ocd: []
+                ocx: [], ocy: [], oct: [], ocd: [],
+                pkx: [], pky: [], pkt: [], pkc: [], pkd: []  // todos los pulsadores
             };
 
-            let ptr = 40, distAcc = 0;
+            let ptr = 40, distAcc = 0, distRaw = 0;
             let vL = null, tL = null, lastEB = -1, pOn = -1;
-            let vLspeed = null, tLspeed = null;  // solo para aceleración, entre paquetes 0xFF10
+            let vLspeed = null, tLspeed = null, distLspeed = null;  // solo para aceleración, entre paquetes 0xFF10
+            let accMoving = false;  // histéresis: true si V>1, false si V<2
             // Punto sintético pendiente de resolver cuando llega el 2º paquete en movimiento
             // tras un gap >10s: { tsV1, vr1, distAcc1, vc1, vi1, idxV1 }
             let pendingStop = null;
@@ -1149,11 +1165,22 @@
             // que tienen sus propios marcadores)
             const RECON_VARS = new Set([
                 0xFF52, 0xFF53, 0xFF54, 0xFF55,
-                0xFF56, 0xFF57, 0xFF66, 0xFF67,
+                0xFF56, 0xFF57,
                 0xFF5C, 0xFF5D
             ]);
             const REBASE_VARS = new Set([0xFF5E, 0xFF5F]);
             const OCULT_VARS  = new Set([0xFF64, 0xFF65]);
+
+            // Todos los pulsadores que se representan siempre al pulsar (val=1)
+            // Excluye aumento (mk.ax), rebase y ocultación (ídem), que tienen trazas propias
+            const PULSA_COLOR = {
+                0xFF66: '#e67e22', 0xFF67: '#e67e22',   // Liberación LVI
+                0xFF5A: '#5b8dd9', 0xFF5B: '#5b8dd9',   // Modo
+                0xFF60: '#c0392b', 0xFF61: '#c0392b',   // Rearme freno
+                0xFF62: '#8e44ad', 0xFF63: '#8e44ad',   // Alarma
+                0xFF68: '#16a085', 0xFF69: '#16a085'    // Conexión
+            };
+            const PULSA_VARS = new Set(Object.keys(PULSA_COLOR).map(Number));
             let pendingRebase = [];
 
             // hasDistData se detecta durante el parseo principal (dd != 0 en algún paquete)
@@ -1179,7 +1206,7 @@
                 const vi  = dv.getUint16(ptr + 26, true);
 
                 const ts = sec * 1000 + ms;
-                const dt = new Date(ts);
+                const dt = utcStr(ts);
                 if (vC === 0xFF03) { pOn = ts; cabinaActiva = true; }
                 if (vC === 0xFF04) cabinaActiva = false;
                 if (vC === 0xFFF1) lastCtrlActivo = val;
@@ -1217,12 +1244,17 @@
                 if (!hasDistData && dd !== 0) {
                     hasDistData = true;
                     distAcc = 0;
+                    distRaw = 0;
                     for (let k = 0; k < full.dist.length; k++) full.dist[k] = 0;
+                    for (let k = 0; k < full.distRaw.length; k++) full.distRaw[k] = 0;
                 }
                 if (hasDistData) {
                     distAcc += ddEff;
+                    distRaw += dd;
                 } else if (tL !== null && ts > tL) {
-                    distAcc += Math.round((vr / 3.6) * ((ts - tL) / 1000));
+                    const dCalc = Math.round((vr / 3.6) * ((ts - tL) / 1000));
+                    distAcc += dCalc;
+                    distRaw += dCalc;
                 }
 
                 if (vC === 0xFF20) {
@@ -1241,7 +1273,7 @@
                         const { tsV1, vrV1, distSyn, vcSyn, viSyn, idxV1 } = pendingStop;
                         // tSyn = tsV1 - (tsV2 - tsV1): simétrico antes del primer punto en movimiento
                         const tSyn = tsV1 - (ts - tsV1);
-                        const dtSyn = new Date(tSyn);
+                        const dtSyn = utcStr(tSyn);
                         // Insertar en idxV1 (antes del primer paquete en movimiento)
                         full.x.splice(idxV1, 0, dtSyn);
                         full.ts.splice(idxV1, 0, tSyn);
@@ -1249,48 +1281,58 @@
                         full.ctrl.splice(idxV1, 0, vcSyn);
                         full.interf.splice(idxV1, 0, viSyn);
                         full.dist.splice(idxV1, 0, distSyn);
+                        full.distRaw.splice(idxV1, 0, distSyn);
                         full.ctrlActivo.splice(idxV1, 0, lastCtrlActivo);
                         // a=0 en tSyn
-                        full.accx.push(dtSyn); full.accy.push(0); full.accts.push(tSyn);
+                        full.accx.push(dtSyn); full.accy.push(0); full.accts.push(tSyn);  // dtSyn ya es utcStr
                         pendingStop = null;
                     }
 
                     if (vLspeed !== null && ts > tLspeed) {
-                        if (vLspeed > 0 && vr > 0) {
-                            // Ambos en movimiento: calcular aceleración real
-                            const a = ((vr - vLspeed) / 3.6) / ((ts - tLspeed) / 1000);
+                        // Actualizar estado de movimiento con histéresis
+                        if (accMoving) {
+                            if (vLspeed < 2) accMoving = false;
+                        } else {
+                            if (vLspeed > 1) accMoving = true;
+                        }
+
+                        if (accMoving && vLspeed > 0 && vr > 0) {
+                            // En movimiento: aceleración basada en distancia real si disponible
+                            const dv_ms     = (vr - vLspeed) / 3.6;
+                            const sign      = dv_ms >= 0 ? 1 : -1;
+                            const deltaDist = hasDistData ? (distAcc - distLspeed) : 0;
+                            let a;
+                            if (hasDistData && deltaDist > 0.5) {
+                                const vAvg_ms = ((vr + vLspeed) / 2) / 3.6;
+                                a = sign * Math.abs(dv_ms * vAvg_ms / deltaDist);
+                            } else {
+                                a = dv_ms / ((ts - tLspeed) / 1000);
+                            }
                             if (a >= -2.5 && a <= 2.5) {
-                                full.accx.push(new Date(tLspeed));
+                                full.accx.push(utcStr(tLspeed));
                                 full.accy.push(a);
                                 full.accts.push(tLspeed);
                             }
-                        } else if (vLspeed === 0 && vr > 0 && (ts - tLspeed) > GAP_MS) {
-                            // Gap >10s parado → arranque: diferir punto sintético al siguiente paquete
-                            pendingStop = {
-                                tsV1: ts, vrV1: vr,
-                                distSyn: distAcc, vcSyn: vcEff, viSyn: viEff,
-                                idxV1: full.x.length  // índice donde se insertará el paquete actual
-                            };
-                        } else if (vLspeed === 0) {
-                            // Parado con gap corto (≤10s): emitir a=0 en el punto anterior
-                            full.accx.push(new Date(tLspeed));
+                        } else {
+                            // Parado o velocidad en zona de histéresis: aceleración = 0
+                            full.accx.push(utcStr(tLspeed));
                             full.accy.push(0);
                             full.accts.push(tLspeed);
                         }
                     }
-                    // Si estamos parados emitir también a=0 en el punto actual
-                    if (vr === 0) {
-                        full.accx.push(new Date(ts));
+                    // Emitir a=0 también en el punto actual si está parado
+                    if (!accMoving || vr === 0) {
+                        full.accx.push(utcStr(ts));
                         full.accy.push(0);
                         full.accts.push(ts);
                     }
-                    vLspeed = vr; tLspeed = ts;
+                    vLspeed = vr; tLspeed = ts; distLspeed = distAcc;
                 }
                 vL = vr; tL = ts;
 
                 full.x.push(dt); full.ts.push(ts);
                 full.real.push(vr); full.ctrl.push(vcEff); full.interf.push(viEff);
-                full.dist.push(distAcc); full.ctrlActivo.push(lastCtrlActivo);
+                full.dist.push(distAcc); full.distRaw.push(distRaw); full.ctrlActivo.push(lastCtrlActivo);
 
                 if (vC === 0xFFF0 && val !== 0) {
                     mk.bx.push(dt); mk.by.push(20);
@@ -1314,12 +1356,18 @@
 
                 if (RECON_VARS.has(vC) && val === 1) {
                     const reconLabel = VAR_MAP[vC] || `0x${vC.toString(16).toUpperCase()}`;
-                    if (ts >= lastBalizaTs && (ts - lastBalizaTs) <= RECON_WINDOW_MS) {
-                        mk.rx.push(dt); mk.ry.push(10);
-                        mk.rt.push([`Reconocimiento: ${reconLabel}`, vr]);
-                        mk.rc.push(darkenColor(lastBalizaColor));
-                        mk.rd.push(distAcc);
-                    }
+                    mk.pkx.push(dt); mk.pky.push(10);
+                    mk.pkt.push([reconLabel, vr]);
+                    mk.pkc.push('#1f77b4');
+                    mk.pkd.push(distAcc);
+                }
+
+                if (PULSA_VARS.has(vC) && val === 1) {
+                    const pLabel = VAR_MAP[vC] || `0x${vC.toString(16).toUpperCase()}`;
+                    mk.pkx.push(dt); mk.pky.push(10);
+                    mk.pkt.push([pLabel, vr]);
+                    mk.pkc.push(PULSA_COLOR[vC]);
+                    mk.pkd.push(distAcc);
                 }
 
                 if (REBASE_VARS.has(vC) && val === 1) {
@@ -1358,8 +1406,10 @@
                 const rawBytes = new Uint8Array(dv.buffer, ptr, 30);
                 const hexBytes = Array.from(rawBytes);
 
+                const dtS = `${dt.slice(8,10)}/${dt.slice(5,7)}/${dt.slice(0,4)}`;
+                const tmS = dt.slice(11,19);
                 rawData.push({ pN, ts, vC, val, vr, vc: vcEff, vi: viEff, dist: distAcc,
-                    dd, dtS: dt.toLocaleDateString(), tmS: dt.toLocaleTimeString(), ms, ckOK,
+                    dd, dtS, tmS, ms, ckOK,
                     ctrlActivo: lastCtrlActivo, hexBytes, badDist, distCalcRef });
                 uniqueVFound.add(vC);
                 ptr += 30;
@@ -1380,6 +1430,39 @@
                     for (let i = 0; i < full.dist.length; i++) full.dist[i] -= distOffset;
                     for (let i = 0; i < rawData.length; i++)  rawData[i].dist -= distOffset;
                 }
+                const rawOffset = full.distRaw[0];
+                if (rawOffset !== 0) {
+                    for (let i = 0; i < full.distRaw.length; i++) full.distRaw[i] -= rawOffset;
+                }
+            }
+
+            // Suavizado en dos pasos: mediana de 5 puntos + gaussiana de 7 puntos
+            if (full.accy.length >= 5) {
+                // Paso 1: mediana de ventana 5 para eliminar picos espurios
+                const median5 = new Array(full.accy.length);
+                for (let i = 0; i < full.accy.length; i++) {
+                    const lo = Math.max(0, i - 2), hi = Math.min(full.accy.length - 1, i + 2);
+                    const win = full.accy.slice(lo, hi + 1).slice().sort((a, b) => a - b);
+                    median5[i] = win[Math.floor(win.length / 2)];
+                }
+                // Paso 2: gaussiana de ventana 7 (σ≈1.5)
+                const gw = [0.0625, 0.125, 0.25, 0.125, 0.0625];  // kernel normalizado 5 puntos
+                //         pesos:  1      2     4     2     1   → suma=10, normalizado
+                const gKernel = [1, 2, 4, 2, 1];
+                const gSum = 10;
+                const smoothed = new Array(full.accy.length);
+                for (let i = 0; i < median5.length; i++) {
+                    let acc = 0, wSum = 0;
+                    for (let k = -2; k <= 2; k++) {
+                        const j = i + k;
+                        if (j < 0 || j >= median5.length) continue;
+                        const w = gKernel[k + 2];
+                        acc  += median5[j] * w;
+                        wSum += w;
+                    }
+                    smoothed[i] = acc / wSum;
+                }
+                full.accy = smoothed;
             }
 
             chartFull    = full;
@@ -1466,7 +1549,7 @@
             const relDist    = dom.relDistToggle.checked;
             const distBase   = relDist && pdist.length ? pdist[0] : 0;
             const pxAxis     = distMode ? pdist.map(d => d - distBase) : px;
-            const cdReal     = pdist.map((d, i) => [d - distBase, decodeCtrlActivo(pctrlActivo[i]), px[i] instanceof Date ? px[i].toLocaleString('es-ES') : '']);
+            const cdReal     = pdist.map((d, i) => [d - distBase, decodeCtrlActivo(pctrlActivo[i]), typeof px[i] === 'string' ? px[i].replace('T',' ').slice(0,19) : '']);
             const distTip    = (hasDistData ? 'Dist' : 'Dist calc.') + (relDist ? ' rel.' : '');
             const showPoints = dom.showPointsToggle.checked;
             const withPts    = showPoints ? 'lines+markers' : 'lines';
@@ -1476,10 +1559,10 @@
             const distOff = distBase;
             const mkBx  = distMode ? mk.bd.map(d => d - distOff) : mk.bx;
             const mkEbx = distMode ? mk.ebd.map(d => d - distOff) : mk.ebx;
-            const mkRx  = distMode ? mk.rd.map(d => d - distOff) : mk.rx;
             const mkAx  = distMode ? mk.ad.map(d => d - distOff) : mk.ax;
             const mkRbx = distMode ? mk.rbd.map(d => d - distOff) : mk.rbx;
             const mkOcx = distMode ? mk.ocd.map(d => d - distOff) : mk.ocx;
+            const mkPkx = distMode ? mk.pkd.map(d => d - distOff) : mk.pkx;
 
             const hoverX   = distMode ? '<b>%{x:,.0f} m</b>' : '<b>%{x|%d/%m/%Y %H:%M:%S}</b>';
             const xTipReal = distMode
@@ -1490,7 +1573,7 @@
             const { sx: isx, sy: isy } = stairDown(pxAxis, pif);
             const accX = distMode ? sliceAccX.map(d => {
                 // sliceAccX son fechas; buscar dist correspondiente en chartFull
-                const t = d instanceof Date ? d.getTime() : d;
+                const t = typeof d === 'string' ? Date.parse(d) : d;
                 const full = chartFull;
                 let lo = 0, hi = full.ts.length - 1;
                 while (lo < hi) { const m = (lo+hi)>>1; if (full.ts[m] < t) lo=m+1; else hi=m; }
@@ -1499,7 +1582,7 @@
 
             return [
                 // 0: V. Real
-                { type: 'scatter', name: 'V. Real', x: pxAxis, y: preal,
+                { type: 'scattergl', name: 'V. Real', x: pxAxis, y: preal,
                   customdata: cdReal, mode: withPts,
                   line: { color: '#1f77b4', width: 2, shape: 'linear' },
                   marker: markerDot,
@@ -1534,30 +1617,30 @@
                   mode: 'markers', marker: { color: 'red', size: 14, symbol: 'triangle-down' },
                   yaxis: 'y2', visible: true,
                   hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Freno Emerg.</extra>` },
-                // 6: Reconocimientos
-                { type: 'scatter', name: 'Reconocimiento',
-                  x: mkRx, y: mk.ry, customdata: mk.rt,
-                  mode: 'markers',
-                  marker: { color: mk.rc, size: 12, symbol: 'triangle-down' },
-                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Reconocimiento</extra>` },
-                // 7: Aumento de velocidad
+                // 6: Aumento de velocidad
                 { type: 'scatter', name: 'Aumento Vel. Control',
                   x: mkAx, y: mk.ay, customdata: mk.at,
                   mode: 'markers',
                   marker: { color: '#1a7a3c', size: 11, symbol: 'triangle-up' },
                   hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Aumento Vel.</extra>` },
-                // 8: Rebase autorizado
+                // 7: Rebase autorizado
                 { type: 'scatter', name: 'Rebase autorizado',
                   x: mkRbx, y: mk.rby, customdata: mk.rbt,
                   mode: 'markers',
                   marker: { color: '#1f77b4', size: 11, symbol: 'triangle-up' },
                   hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Rebase</extra>` },
-                // 9: Ocultación
+                // 8: Ocultación
                 { type: 'scatter', name: 'Ocultación',
                   x: mkOcx, y: mk.ocy, customdata: mk.oct,
                   mode: 'markers',
                   marker: { color: '#888', size: 11, symbol: 'circle' },
-                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Ocultación</extra>` }
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Ocultación</extra>` },
+                // 9: Pulsadores
+                { type: 'scatter', name: 'Pulsadores',
+                  x: mkPkx, y: mk.pky, customdata: mk.pkt,
+                  mode: 'markers',
+                  marker: { color: mk.pkc, size: 11, symbol: 'triangle-down', opacity: 0.85 },
+                  hovertemplate: `${hoverX}<br>%{customdata[0]}<br>V.Real: %{customdata[1]} km/h<extra>Pulsador</extra>` }
             ];
         }
 
@@ -1616,7 +1699,7 @@
                 xaxis:  distMode
                     ? { title: 'Distancia (m)', type: 'linear', fixedrange: false }
                     : { type: 'date', rangeslider: { visible: false }, fixedrange: false },
-                yaxis:  { title: 'km/h', range: [0, 150], fixedrange: true },
+                yaxis:  { title: 'km/h', range: [0, parseInt(document.getElementById('yMaxInput').value) || 150], fixedrange: true },
                 yaxis2: { title: 'm/s²', range: [-3, 3], overlaying: 'y', side: 'right',
                           visible: false, showgrid: false, fixedrange: true },
                 hovermode: 'closest',
@@ -1628,13 +1711,12 @@
             };
             const config = {
                 responsive: true, displaylogo: false,
-                modeBarButtonsToRemove: ['select2d', 'lasso2d', 'resetScale2d'],
-                toImageButtonOptions: { format: 'png', filename: 'analisis_asfa',
-                    height: 600, width: 1400, scale: 2 }
+                modeBarButtonsToRemove: ['select2d', 'lasso2d', 'resetScale2d', 'toImage'],
             };
             Plotly.newPlot('mainChart', traces, layout, config);
 
             document.getElementById('mainChart').on('plotly_relayout', e => {
+                if (_exporting) return;
                 if (!('xaxis.range[0]' in e) && !('xaxis.autorange' in e)) return;
 
                 let s = null, n = null;
@@ -1642,9 +1724,10 @@
 
                 if (e['xaxis.range[0]'] != null && !e['xaxis.autorange']) {
                     if (!distMode) {
-                        // Modo tiempo: rango X son fechas
-                        s = new Date(e['xaxis.range[0]']).getTime();
-                        n = new Date(e['xaxis.range[1]']).getTime();
+                        // Plotly devuelve fechas como "YYYY-MM-DD HH:MM:SS.mmm" → parsear como UTC
+                        const toUtcMs = str => Date.parse(String(str).replace(' ', 'T') + 'Z');
+                        s = toUtcMs(e['xaxis.range[0]']);
+                        n = toUtcMs(e['xaxis.range[1]']);
                     } else {
                         // Modo distancia: rango X son metros → convertir a timestamps
                         const relDist  = dom.relDistToggle.checked;
@@ -1698,7 +1781,7 @@
             const { sx: isx, sy: isy } = stairDown(pxAxis, pif);
 
             const accX = distMode ? sliceAccX.map(d => {
-                const t = d instanceof Date ? d.getTime() : d;
+                const t = typeof d === 'string' ? Date.parse(d) : d;
                 const full = chartFull;
                 let lo = 0, hi = full.ts.length - 1;
                 while (lo < hi) { const m = (lo+hi)>>1; if (full.ts[m] < t) lo=m+1; else hi=m; }
@@ -1708,32 +1791,10 @@
             // Coordenadas X de marcadores según modo
             const mk = chartMarkers;
             const mkBx  = distMode ? mk.bd.map(d => d - distBase) : mk.bx;
-            const mkRx  = distMode ? mk.rd.map(d => d - distBase) : mk.rx;
             const mkAx  = distMode ? mk.ad.map(d => d - distBase) : mk.ax;
             const mkRbx = distMode ? mk.rbd.map(d => d - distBase) : mk.rbx;
             const mkOcx = distMode ? mk.ocd.map(d => d - distBase) : mk.ocx;
-
-            // Trazas 0-2
-            Plotly.restyle('mainChart', {
-                x:            [pxAxis, csx,   isx  ],
-                y:            [preal,  csy,   isy  ],
-                customdata:   [cdReal, pdist, pdist],
-                mode:         [withPts, withPts, withPts],
-                'line.shape': ['linear', 'linear', 'linear'],
-                marker:       [markerDot, markerDot, markerDot],
-                visible:      [true,  !accel, !accel]
-            }, [0, 1, 2]);
-
-            // Traza 4: aceleración + visibilidad eje Y2
-            Plotly.restyle('mainChart', {
-                x:            [accX],
-                y:            [sliceAccY],
-                mode:         [withPts],
-                'line.shape': ['linear'],
-                marker:       [markerDot],
-                visible:      [accel]
-            }, [4]);
-            Plotly.relayout('mainChart', { 'yaxis2.visible': accel });
+            const mkPkx = distMode ? mk.pkd.map(d => d - distBase) : mk.pkx;
 
             // Filtrar marcadores de freno de emergencia si el toggle está activo
             const ebOnlyMoving = dom.ebMovingToggle.checked;
@@ -1743,13 +1804,13 @@
                 const full = chartFull;
                 const filtered = { x: [], y: [], t: [] };
                 for (let i = 0; i < mk.ebx.length; i++) {
-                    const tsEB = mk.ebx[i].getTime();
+                    const tsEB = typeof mk.ebx[i] === 'string' ? Date.parse(mk.ebx[i]) : mk.ebx[i].getTime();
                     let lo = 0, hi = full.ts.length - 1;
                     while (lo < hi) {
                         const mid = (lo + hi) >> 1;
                         if (full.ts[mid] < tsEB) lo = mid + 1; else hi = mid;
                     }
-                    if (full.real[lo] > 10) {
+                    if (full.real[lo] > 5) {
                         filtered.x.push(distMode ? mk.ebd[i] - distBase : mk.ebx[i]);
                         filtered.y.push(mk.eby[i]);
                         filtered.t.push(mk.ebt[i]);
@@ -1758,13 +1819,31 @@
                 ebx = filtered.x; eby = filtered.y; ebt = filtered.t;
             }
 
-            // Trazas 3, 5, 6, 7, 8, 9: marcadores
-            Plotly.restyle('mainChart', {
-                x:          [mkBx,     ebx,  mkRx,        mkAx,        mkRbx,       mkOcx],
-                y:          [mk.by,    eby,  mk.ry,       mk.ay,       mk.rby,      mk.ocy],
-                customdata: [mk.bt,    ebt,  mk.rt,       mk.at,       mk.rbt,      mk.oct],
-                visible:    [true, true, true, true, true, true]
-            }, [3, 5, 6, 7, 8, 9]);
+            // Un único Plotly.react: actualiza datos + layout en un solo redibujado
+            const gd = document.getElementById('mainChart');
+            const newTraces = gd.data.map((t, i) => {
+                const u = Object.assign({}, t);
+                if (i === 0) { u.x = pxAxis; u.y = preal;      u.customdata = cdReal; u.mode = withPts; u.marker = markerDot; u.visible = true; }
+                if (i === 1) { u.x = csx;    u.y = csy;        u.mode = withPts; u.marker = markerDot; u.visible = !accel; }
+                if (i === 2) { u.x = isx;    u.y = isy;        u.mode = withPts; u.marker = markerDot; u.visible = !accel; }
+                if (i === 3) { u.x = mkBx;   u.y = mk.by;      u.customdata = mk.bt; }
+                if (i === 4) { u.x = accX;   u.y = sliceAccY;  u.mode = withPts; u.marker = markerDot; u.visible = accel; }
+                if (i === 5) { u.x = ebx;    u.y = eby;        u.customdata = ebt; }
+                if (i === 6) { u.x = mkAx;   u.y = mk.ay;      u.customdata = mk.at; }
+                if (i === 7) { u.x = mkRbx;  u.y = mk.rby;     u.customdata = mk.rbt; }
+                if (i === 8) { u.x = mkOcx;  u.y = mk.ocy;     u.customdata = mk.oct; }
+                if (i === 9) { u.x = mkPkx;  u.y = mk.pky;     u.customdata = mk.pkt; }
+                return u;
+            });
+            // Clonar layout en profundidad para no mutar el estado interno de Plotly
+            const curLayout = JSON.parse(JSON.stringify(gd.layout));
+            // Preservar el rango X actual (zoom) explícitamente
+            if (gd.layout.xaxis.range) {
+                curLayout.xaxis.range     = [...gd.layout.xaxis.range];
+                curLayout.xaxis.autorange = false;
+            }
+            curLayout.yaxis2.visible = accel;
+            Plotly.react(gd, newTraces, curLayout);
         }
 
         dom.accelToggle.onchange = function () {
@@ -1780,6 +1859,12 @@
         dom.ebMovingToggle.onchange = function () {
             redrawDecimated(currentRange[0], currentRange[1]);
         };
+        document.getElementById('yMaxInput').addEventListener('change', function () {
+            const val = parseInt(this.value);
+            if (!isNaN(val) && val >= 10) {
+                Plotly.relayout('mainChart', { 'yaxis.range': [0, val] });
+            }
+        });
         dom.distModeToggle.onchange = function () {
             // Al cambiar eje distancia (activar o desactivar), resetear el resto de checkboxes
             dom.accelToggle.checked      = false;
@@ -1795,9 +1880,141 @@
             refreshTables(null, null);
         };
 
-        dom.btnExportImg.onclick = () => {
-            Plotly.downloadImage('mainChart', { format: 'png', filename: 'analisis_asfa',
-                height: 600, width: 1400, scale: 2 });
+        dom.btnExportImg.onclick = async () => {
+            const gd    = document.getElementById('mainChart');
+            const glIdx = gd.data.map((t,i) => t.type === 'scattergl' ? i : null).filter(i => i !== null);
+
+            _exporting = true;
+            try {
+                // Ocultar barra de herramientas de Plotly durante la captura
+                const modebar = gd.querySelector('.modebar-container');
+                if (modebar) modebar.style.display = 'none';
+
+                // Guardar rango visible actual del eje X
+                const xRange = gd.layout.xaxis.range ? [...gd.layout.xaxis.range] : null;
+
+                // 1. scattergl → scatter manteniendo el rango
+                if (glIdx.length) {
+                    Plotly.restyle(gd, { type: 'scatter' }, glIdx);
+                    // Restaurar rango inmediatamente para que no se resetee
+                    if (xRange) Plotly.relayout(gd, { 'xaxis.range': xRange, 'xaxis.autorange': false });
+                    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                }
+
+                // 2. Capturar todos los SVGs del gráfico (main-svg + infolayer con leyenda)
+                const W   = gd.clientWidth;
+                const H   = gd.clientHeight;
+
+                // Leer valores KPI del DOM
+                const kpiItems = Array.from(document.querySelectorAll('#kpiPanel .kpi-item')).map(el => ({
+                    label: el.querySelector('label').textContent,
+                    value: el.querySelector('span').textContent
+                }));
+                const KPI_H = 54;  // altura del bloque KPI en la imagen
+                const totalH = H + KPI_H;
+
+                // Combinar todos los SVG hijos en uno solo
+                const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                wrapper.setAttribute('width',  W);
+                wrapper.setAttribute('height', totalH);
+                wrapper.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                bg.setAttribute('width', '100%'); bg.setAttribute('height', '100%');
+                bg.setAttribute('fill', 'white');
+                wrapper.appendChild(bg);
+                gd.querySelectorAll('svg').forEach(s => {
+                    const clone = s.cloneNode(true);
+                    // Eliminar la barra de herramientas de Plotly del clone
+                    clone.querySelectorAll('.modebar-container, .modebar').forEach(el => el.remove());
+                    const r = s.getBoundingClientRect();
+                    const p = gd.getBoundingClientRect();
+                    const x = r.left - p.left;
+                    const y = r.top  - p.top;
+                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    g.setAttribute('transform', `translate(${x},${y})`);
+                    g.appendChild(clone);
+                    wrapper.appendChild(g);
+                });
+
+                // Añadir KPIs como texto SVG debajo de la gráfica
+                const kpiW = W / kpiItems.length;
+                kpiItems.forEach((kpi, i) => {
+                    const x = i * kpiW + kpiW / 2;
+                    // Fondo de cada kpi
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', i * kpiW + 2); rect.setAttribute('y', H + 2);
+                    rect.setAttribute('width', kpiW - 4); rect.setAttribute('height', KPI_H - 4);
+                    rect.setAttribute('rx', '6'); rect.setAttribute('fill', '#f8f9fa');
+                    rect.setAttribute('stroke', '#dee2e6'); rect.setAttribute('stroke-width', '1');
+                    wrapper.appendChild(rect);
+                    // Línea izquierda azul
+                    const bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    bar.setAttribute('x', i * kpiW + 2); bar.setAttribute('y', H + 2);
+                    bar.setAttribute('width', '4'); bar.setAttribute('height', KPI_H - 4);
+                    bar.setAttribute('rx', '6'); bar.setAttribute('fill', '#0056b3');
+                    wrapper.appendChild(bar);
+                    // Label
+                    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    lbl.setAttribute('x', x); lbl.setAttribute('y', H + 18);
+                    lbl.setAttribute('text-anchor', 'middle');
+                    lbl.setAttribute('font-family', 'Segoe UI, sans-serif');
+                    lbl.setAttribute('font-size', '9');
+                    lbl.setAttribute('font-weight', '700');
+                    lbl.setAttribute('fill', '#888');
+                    lbl.setAttribute('letter-spacing', '0.05em');
+                    lbl.textContent = kpi.label.toUpperCase();
+                    wrapper.appendChild(lbl);
+                    // Valor
+                    const val = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    val.setAttribute('x', x); val.setAttribute('y', H + 40);
+                    val.setAttribute('text-anchor', 'middle');
+                    val.setAttribute('font-family', 'Consolas, monospace');
+                    val.setAttribute('font-size', '14');
+                    val.setAttribute('font-weight', '700');
+                    val.setAttribute('fill', '#0056b3');
+                    val.textContent = kpi.value;
+                    wrapper.appendChild(val);
+                });
+
+                const svgStr = new XMLSerializer().serializeToString(wrapper);
+                const b64    = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
+
+                // 3. Restaurar scattergl con el mismo rango
+                if (glIdx.length) {
+                    Plotly.restyle(gd, { type: 'scattergl' }, glIdx);
+                    if (xRange) Plotly.relayout(gd, { 'xaxis.range': xRange, 'xaxis.autorange': false });
+                }
+
+                // 4. Generar PNG
+                await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const scale  = 2;
+                        const canvas = document.createElement('canvas');
+                        canvas.width  = W * scale;
+                        canvas.height = totalH * scale;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.scale(scale, scale);
+                        ctx.drawImage(img, 0, 0, W, totalH);
+                        const a = document.createElement('a');
+                        a.href     = canvas.toDataURL('image/png');
+                        a.download = 'analisis_asfa.png';
+                        a.click();
+                        resolve();
+                    };
+                    img.onerror = reject;
+                    img.src = b64;
+                });
+            } catch(e) {
+                if (glIdx.length) Plotly.restyle(gd, { type: 'scattergl' }, glIdx);
+                alert('Error: ' + (e && e.message ? e.message : e));
+            } finally {
+                const modebar = gd.querySelector('.modebar-container');
+                if (modebar) modebar.style.display = '';
+                _exporting = false;
+            }
         };
 
         // ============================================================
@@ -2223,22 +2440,43 @@
             }
 
             let vmax = 0, vsum = 0, count = 0;
-            let msMoving = 0, msStopped = 0;
-            for (let i = lo; i <= hi; i++) {
-                const v = full.real[i];
-                if (v > vmax) vmax = v;
-                vsum += v;
-                count++;
-                // Acumular tiempo entre paquetes consecutivos
-                if (i > lo) {
-                    const dt = full.ts[i] - full.ts[i - 1];
-                    if (full.real[i - 1] > 0) msMoving  += dt;
-                    else                       msStopped += dt;
+            let msMoving = 0;
+            let firstTs = null, lastTs = null;
+            let lastSpeedTs = null, lastSpeedVr = null, movingState = false;
+
+            for (let i = 0; i < rawData.length; i++) {
+                const p = rawData[i];
+                const inRange = (s === null) || (p.ts >= s && p.ts <= n);
+                if (!inRange) continue;
+
+                // Estadísticas sobre paquetes de velocidad
+                if (p.vC === 0xFF10) {
+                    if (p.vr > vmax) vmax = p.vr;
+                    vsum += p.vr; count++;
+                    if (lastSpeedTs !== null) {
+                        const dt = p.ts - lastSpeedTs;
+                        // Histéresis: entra en movimiento si V > 1, sale si V < 2
+                        if (movingState) {
+                            if (lastSpeedVr < 2) movingState = false;
+                        } else {
+                            if (lastSpeedVr > 1) movingState = true;
+                        }
+                        if (movingState) msMoving += dt;
+                    }
+                    lastSpeedTs = p.ts;
+                    lastSpeedVr = p.vr;
                 }
+
+                // Primer y último paquete del rango (cualquier tipo)
+                if (firstTs === null) firstTs = p.ts;
+                lastTs = p.ts;
             }
-            const vmed  = count > 0 ? (vsum / count) : 0;
-            const dist  = Math.abs(full.dist[hi] - full.dist[lo]);
-            const ms    = full.ts[hi] - full.ts[lo];
+
+            const ms        = (firstTs !== null && lastTs !== null) ? lastTs - firstTs : 0;
+            const msStopped = Math.max(0, ms - msMoving);
+            const vmed      = count > 0 ? (vsum / count) : 0;
+            const dist    = Math.abs(full.dist[hi] - full.dist[lo]);
+            const distRaw = Math.abs(full.distRaw[hi] - full.distRaw[lo]);
             const fmtTime = t => {
                 const s = Math.floor(t / 1000);
                 const h = Math.floor(s / 3600);
@@ -2251,7 +2489,11 @@
 
             document.getElementById('kpiVmax').textContent        = `${vmax} km/h`;
             document.getElementById('kpiVmed').textContent        = `${vmed.toFixed(1)} km/h`;
-            document.getElementById('kpiDist').textContent        = `${dist.toLocaleString()} m`;
+            document.getElementById('kpiDist').innerHTML =
+                `${dist.toLocaleString()} m` +
+                (distRaw !== dist
+                    ? `<br><span style="font-size:.8em;color:#888" title="Distancia total del registrador, incluyendo dd anómalos">(reg: ${distRaw.toLocaleString()} m)</span>`
+                    : '');
             document.getElementById('kpiTime').textContent        = fmtTime(ms);
             document.getElementById('kpiTimeMoving').textContent  = fmtTime(msMoving);
             document.getElementById('kpiTimeStopped').textContent = fmtTime(msStopped);
