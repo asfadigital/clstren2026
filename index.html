@@ -101,6 +101,53 @@
         .header-item span.ok { color: var(--success) }
         .header-item span.error { color: var(--error) }
 
+        .header-item { cursor: pointer; }
+        .header-item:hover { border-left-color: #003d80; background: #f0f7ff; }
+
+        /* ── Modal hexdump cabecera ── */
+        #hexModal {
+            display: none;
+            position: fixed; inset: 0; z-index: 10000;
+            background: rgba(0,0,0,.45);
+            align-items: center; justify-content: center;
+        }
+        #hexModal.visible { display: flex; }
+        #hexModal .hm-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.18);
+            padding: 24px 28px;
+            min-width: 480px; max-width: 640px;
+            font-family: 'Consolas', monospace;
+        }
+        #hexModal .hm-title {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 13px; font-weight: 700;
+            color: var(--primary); margin-bottom: 14px;
+            border-bottom: 1px solid var(--border); padding-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #hexModal .hm-close {
+            background: none; border: none; cursor: pointer;
+            font-size: 18px; color: #888; line-height: 1; padding: 0 4px;
+        }
+        #hexModal .hm-close:hover { color: var(--error); }
+        #hexModal .hm-meta {
+            font-size: 10px; color: #888; margin-bottom: 10px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        #hexModal .hm-dump {
+            font-size: 12px; line-height: 1.8;
+            white-space: pre; color: #333;
+        }
+        #hexModal .hm-offset { color: #888; }
+        #hexModal .hm-hex    { color: #0056b3; }
+        #hexModal .hm-hi     { color: #fff; background: #0056b3;
+                                border-radius: 2px; padding: 0 1px; }
+        #hexModal .hm-sep    { color: #ccc; }
+        #hexModal .hm-ascii  { color: #2d6a4f; }
+
         .chart-controls {
             display: flex;
             align-items: center;
@@ -531,6 +578,29 @@
   </div>
 </div>
 
+<!-- MODAL GRÁFICO CONTROLES -->
+<div id="ctrlChartModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:20px 24px;width:560px;max-width:95vw;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+      <span style="font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;font-weight:700;color:var(--primary);">Distribución de Controles Activos</span>
+      <button onclick="document.getElementById('ctrlChartModal').style.display='none';Plotly.purge('controlsChartModal');" style="background:none;border:none;cursor:pointer;font-size:18px;color:#888;line-height:1;padding:0 4px;">✕</button>
+    </div>
+    <div id="controlsChartModal" style="width:100%;height:460px;"></div>
+  </div>
+</div>
+
+<!-- MODAL HEXDUMP CABECERA -->
+<div id="hexModal">
+  <div class="hm-box">
+    <div class="hm-title">
+      <span id="hmFieldName">Campo</span>
+      <button class="hm-close" onclick="document.getElementById('hexModal').classList.remove('visible')">✕</button>
+    </div>
+    <div class="hm-meta" id="hmMeta"></div>
+    <div class="hm-dump" id="hmDump"></div>
+  </div>
+</div>
+
 <!-- HEADER FIJO CON ZOOM -->
 <div class="app-header">
     <h1>Analizador CLS de ASFA Digital Embarcado</h1>
@@ -688,16 +758,39 @@
                         <div id="scrollSentinelErr" style="height:1px;"></div>
                     </div>
                 </div><!-- /errorsWrapper -->
+                <div id="controlsWrapper" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;border-bottom:2px solid #eee;padding-bottom:8px;">
+                        <h2 style="margin:0;border:none;padding:0;">3. Resumen de Controles Activos</h2>
+                        <span id="controlsCount" style="font-size:14px;font-weight:400;color:#155724;background:#d4edda;border:1px solid #28a745;border-radius:12px;padding:2px 10px;white-space:nowrap;"></span>
+                        <button onclick="openControlsChart()" class="btn btn-outline btn-sm" style="border-color:#28a745;color:#155724;">🥧 Ver gráfico</button>
+                    </div>
+                    <div>
+                        <div class="table-container" style="max-height:420px;">
+                            <table id="controlsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Control Activo</th>
+                                        <th>Valor</th>
+                                        <th>Activaciones</th>
+                                        <th>%</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="controlsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div><!-- /controlsWrapper -->
             <div class="view-selector">
-                <button class="btn btn-primary" id="btnShowSummary">Ver Resumen</button>
-                <button class="btn btn-outline" id="btnShowDetails">Ver Lista Completa</button>
+                <button class="btn btn-primary" id="btnShowSummary">Resumen Paquetes</button>
+                <button class="btn btn-outline" id="btnShowControls" style="border-color:#28a745;color:#155724;">
+                    ⚙ Resumen Controles <span id="ctrlBadge" style="background:#28a745;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span>
+                </button>
+                <button class="btn btn-outline" id="btnShowDetails">Lista Paquetes</button>
                 <button class="btn btn-outline" id="btnShowErrors" style="border-color:#ffc107;color:#856404;">
                     ⚠ Ver Errores <span id="errBadge" style="background:#ffc107;color:#333;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span>
                 </button>
                 <button class="btn btn-outline" style="margin-left:auto;" id="btnExportCSV">Exportar CSV</button>
             </div>
-        </div>
-    </div>
 
     <script>
         // ============================================================
@@ -786,7 +879,7 @@
             const tipo    = val & 0x1F;
             const aumento = (val >> 5) & 1;
             const nombre  = CTRL_MAP[tipo] || `Control reserva (${tipo})`;
-            return aumento ? nombre + ' [+V]' : nombre;
+            return aumento ? nombre + ' [Aumento]' : nombre;
         }
 
         const MODO_MAP = {
@@ -815,6 +908,7 @@
             btnShowSummary: document.getElementById('btnShowSummary'),
             btnShowDetails: document.getElementById('btnShowDetails'),
             btnShowErrors:  document.getElementById('btnShowErrors'),
+            btnShowControls:document.getElementById('btnShowControls'),
             header:         document.getElementById('headerData'),
             packets:        document.getElementById('packetsBody'),
             summaryBody:    document.getElementById('summaryBody'),
@@ -1053,10 +1147,13 @@
             currentRange = [null, null];
             headerChecksumOK = true;
             hasDistData      = true;
+            headerBytes      = null;
             filteredData = []; renderedUpto = 0;
             tableDistBaseGlobal = 0;
             _rowUid = 0;
             errorsData = []; errorsRendered = 0;
+            document.getElementById('controlsBody').innerHTML = '';
+            document.getElementById('ctrlBadge').textContent = '0';
             if (errorsObserver) { errorsObserver.disconnect(); errorsObserver = null; }
             document.getElementById('errorsBody').innerHTML = '';
             document.getElementById('errBadge').textContent = '0';
@@ -1079,41 +1176,59 @@
         // ============================================================
         // PARSEO
         // ============================================================
+        let headerBytes = null;   // bytes de cabecera para el visor hex
+
         function parse(dv, fileName) {
             if (dv.byteLength < 40) throw new Error('Cabecera insuficiente. ¿Es un fichero .CLS válido?');
             const swBytes = new Uint8Array(dv.buffer, 2, 4);
             if (!swBytes.some(b => b > 31 && b < 127))
                 throw new Error('El fichero no parece un registro ASFA-D válido.');
 
-            const bcd = a => Array.from(a).map(b => `${(b >> 4) & 15}${b & 15}`).join('');
+            headerBytes = new Uint8Array(dv.buffer.slice(0, 40));
+
+            const bcd = a => Array.from(a).map(b => {
+                const hi = (b >> 4) & 0xF, lo = b & 0xF;
+                const fmtN = n => n > 9 ? n.toString(16).toUpperCase() : n;
+                return `${fmtN(hi)}${fmtN(lo)}`;
+            }).join('');
             const asc = a => Array.from(a).map(b => b > 31 ? String.fromCharCode(b) : '.').join('');
-            const addH = (l, v) => {
-                dom.header.innerHTML += `<div class="header-item"><label>${esc(l)}</label><span>${v}</span></div>`;
+            const addH = (l, v, off, len, rev) => {
+                dom.header.innerHTML +=
+                    `<div class="header-item" data-off="${off}" data-len="${len}" data-label="${esc(l)}" data-rev="${rev ? 1 : 0}">` +
+                    `<label>${esc(l)}</label><span>${v}</span></div>`;
             };
 
-            addH('CRC-CCITT', '0x' + dv.getUint16(0, true).toString(16).toUpperCase());
-            addH('Versión Formato Registro', esc(asc(new Uint8Array(dv.buffer, 2, 2))));
-            addH('SW Herram. Conversión',    esc(asc(new Uint8Array(dv.buffer, 4, 4))));
-            addH('ID Usuario',    dv.getUint32(8, true));
-            addH('ID Fabricante', dv.getUint8(12));
+            addH('CRC-CCITT',              '0x' + dv.getUint16(0, true).toString(16).toUpperCase(),  0, 2, true);
+            addH('Versión Formato Registro',
+                Array.from(new Uint8Array(dv.buffer, 2, 2)).reverse()
+                    .map(b => b > 31 ? String.fromCharCode(b) : '.').join('.'),  2, 2, true);
+            addH('SW Herram. Conversión',
+                (() => { const b = Array.from(new Uint8Array(dv.buffer, 4, 4)).reverse()
+                    .map(b => b > 31 ? String.fromCharCode(b) : '.'); return b[0]+b[1]+'.'+b[2]+b[3]; })(),
+                4, 4, true);
+            addH('ID Usuario',               dv.getUint32(8, true),                                   8, 4, true);
+            addH('ID Fabricante',            dv.getUint8(12),                                        12, 1, false);
             const modo = dv.getUint8(13);
-            addH('Modo Sistema', `${modo} - ${esc(MODO_MAP[modo] || 'Desconocido')}`);
-            addH('Nº Serie UT (BCD)', bcd(new Uint8Array(dv.buffer, 14, 2)));
-            addH('Número UIC',        bcd(new Uint8Array(dv.buffer, 16, 6).reverse()));
-            addH('Número Rama',       bcd(new Uint8Array(dv.buffer, 22, 2)));
-            addH('Serie Equipo',      dv.getUint16(24, true));
-            addH('Versión SW Equipo', esc(asc(new Uint8Array(dv.buffer, 26, 4))));
-            addH('V. Máxima Tren',    dv.getUint16(30, true) + ' km/h');
+            addH('Modo Sistema', `${modo} - ${esc(MODO_MAP[modo] || 'Desconocido')}`,                13, 1, false);
+            addH('Nº Serie UT (BCD)',        bcd(new Uint8Array(dv.buffer, 14, 2).reverse()),        14, 2, true);
+            addH('Número UIC',               bcd(new Uint8Array(dv.buffer, 16, 6).reverse()),        16, 6, true);
+            addH('Número Rama',              bcd(new Uint8Array(dv.buffer, 22, 2).reverse()),        22, 2, true);
+            addH('Serie Equipo',             dv.getUint16(24, true),                                 24, 2, true);
+            addH('Versión SW Equipo',
+                (() => { const b = Array.from(new Uint8Array(dv.buffer, 26, 4)).reverse()
+                    .map(b => b > 31 ? String.fromCharCode(b) : '.'); return b[0]+b[1]+'.'+b[2]+b[3]; })(),
+                26, 4, true);
+            addH('V. Máxima Tren',           dv.getUint16(30, true) + ' km/h',                       30, 2, true);
             const op = dv.getUint16(32, true);
-            addH('Código Operador', `${op} - ${esc(OPERADOR_MAP[op] || 'Desconocido')}`);
+            addH('Código Operador', `${op} - ${esc(OPERADOR_MAP[op] || 'Desconocido')}`,             32, 2, true);
             totalInFile = dv.getUint32(34, true);
-            addH('Total Paquetes', totalInFile);
+            addH('Total Paquetes',           totalInFile,                                             34, 4, true);
             let cabSum = 0;
             for (let i = 2; i <= 37; i++) cabSum += dv.getUint8(i);
             const cabCK = dv.getUint16(38, true);
             headerChecksumOK = (cabSum & 0xFFFF) === cabCK;
             addH('Checksum Cab.', '0x' + cabCK.toString(16).toUpperCase() +
-                (headerChecksumOK ? ' <span class="ok">(OK)</span>' : ' <span class="error">(ERROR)</span>'));
+                (headerChecksumOK ? ' <span class="ok">(OK)</span>' : ' <span class="error">(ERROR)</span>'), 38, 2, true);
             document.getElementById('headerSection').style.display = 'block';
 
             // Parseo asíncrono por chunks para no bloquear el hilo en ficheros grandes
@@ -2407,19 +2522,108 @@
         }
 
         function rebuildErrorsList() {
-            errorsData     = rawData.filter(p => !p.ckOK || p.badDist);
+            const eS = currentRange[0], eN = currentRange[1];
+            const zoomTime = eS !== null;
+            errorsData     = rawData.filter(p =>
+                (!p.ckOK || p.badDist) &&
+                (!zoomTime || (p.ts >= eS && p.ts <= eN))
+            );
             errorsRendered = 0;
             document.getElementById('errorsBody').innerHTML = '';
             document.getElementById('renderProgressErr').style.width = '0%';
             // Badge y contador en cabecera
-            const n = errorsData.length;
-            document.getElementById('errBadge').textContent  = n;
+            const eCount = errorsData.length;
+            document.getElementById('errBadge').textContent  = eCount;
             document.getElementById('errorsCount').textContent =
-                n === 0 ? 'Sin errores' : `${n} paquete${n !== 1 ? 's' : ''} con error`;
+                eCount === 0 ? 'Sin errores' : `${eCount} paquete${eCount !== 1 ? 's' : ''} con error`;
             // Ocultar/mostrar botón según si hay errores
-            dom.btnShowErrors.style.display = n > 0 ? '' : 'none';
+            dom.btnShowErrors.style.display = eCount > 0 ? '' : 'none';
             appendNextErrorPage();
             initErrorsScrollObserver();
+        }
+
+        // ============================================================
+        // CONTROLES ACTIVOS
+        // ============================================================
+        let _controlsRows = [];   // datos calculados, se renderizan al mostrar el panel
+
+        const pastel = [
+            '#AEC6CF','#FFD1DC','#B5EAD7','#FFDAC1','#C7CEEA',
+            '#F2C4CE','#D4E09B','#F9E4B7','#B9D0E8','#E8C4DE',
+            '#A8D8B9','#FAD2AD','#C5B9D6','#B8DFD8','#F7C59F',
+            '#D6BFBB','#B2D0B4','#EDD9A3','#C9C0D3','#AECBCB'
+        ];
+
+        function openControlsChart() {
+            if (!_controlsRows.length) return;
+            const modal = document.getElementById('ctrlChartModal');
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                const div = document.getElementById('controlsChartModal');
+                const W = div.clientWidth;
+                const H = div.clientHeight;
+                Plotly.react('controlsChartModal', [{
+                    type: 'pie',
+                    labels: _controlsRows.map(r => decodeCtrlActivo(r.val)),
+                    values: _controlsRows.map(r => r.cnt),
+                    textinfo: 'percent',
+                    textposition: 'inside',
+                    insidetextorientation: 'radial',
+                    hovertemplate: '<b>%{label}</b><br>%{value} activaciones (%{percent})<extra></extra>',
+                    hole: 0.3,
+                    domain: { x: [0, 1], y: [0, 1] },
+                    marker: {
+                        colors: _controlsRows.map((_, i) => pastel[i % pastel.length]),
+                        line: { color: '#fff', width: 1 }
+                    }
+                }], {
+                    width: W, height: H,
+                    margin: { t: 0, b: 0, l: 0, r: 0 },
+                    showlegend: false,
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor:  'transparent'
+                }, { responsive: false, displayModeBar: false });
+            });
+        }
+
+        function rebuildControlsList() {
+            const s = currentRange[0], n = currentRange[1];
+            const zoomTime = s !== null;
+            const counts = {};
+            let lastVal = undefined;
+            let total = 0;
+
+            for (let i = 0; i < rawData.length; i++) {
+                const p = rawData[i];
+                if (p.vC !== 0xFFF1) continue;
+                const inTime = !zoomTime || (p.ts >= s && p.ts <= n);
+                if (!inTime) continue;
+                if (p.val === lastVal) continue;
+                lastVal = p.val;
+                counts[p.val] = (counts[p.val] || 0) + 1;
+                total++;
+            }
+
+            document.getElementById('ctrlBadge').textContent = total;
+            document.getElementById('controlsCount').textContent =
+                total === 0 ? 'Sin activaciones' : `${total} activación${total !== 1 ? 'es' : ''}`;
+
+            _controlsRows = Object.entries(counts)
+                .map(([val, cnt]) => ({ val: parseInt(val), cnt }))
+                .sort((a, b) => b.cnt - a.cnt);
+
+            document.getElementById('controlsBody').innerHTML = _controlsRows.map(r =>
+                `<tr>` +
+                `<td>${esc(decodeCtrlActivo(r.val))}</td>` +
+                `<td style="font-family:monospace">0x${r.val.toString(16).toUpperCase().padStart(2,'0')}</td>` +
+                `<td>${r.cnt}</td>` +
+                `<td>${total > 0 ? ((r.cnt / total) * 100).toFixed(1) : '0.0'}%</td>` +
+                `</tr>`
+            ).join('');
+
+            // Purgar tarta del modal si está abierta con datos anteriores
+            Plotly.purge('controlsChartModal');
+            document.getElementById('ctrlChartModal').style.display = 'none';
         }
 
         // ============================================================
@@ -2560,6 +2764,7 @@
             appendNextPage();      // carga las primeras PAGE_SIZE filas
             initScrollObserver();  // el resto se carga al hacer scroll
             rebuildErrorsList();   // reconstruir listado de errores
+            rebuildControlsList(); // reconstruir listado de controles activos
         }
 
         // ============================================================
@@ -2579,23 +2784,31 @@
         };
         // ── Helper para activar vista y marcar botón activo ──────────
         function switchView(view) {
-            document.getElementById('summaryWrapper').style.display = view === 'summary'  ? 'block' : 'none';
-            document.getElementById('detailsWrapper').style.display = view === 'details'  ? 'block' : 'none';
-            document.getElementById('errorsWrapper') .style.display = view === 'errors'   ? 'block' : 'none';
+            document.getElementById('summaryWrapper') .style.display = view === 'summary'  ? 'block' : 'none';
+            document.getElementById('detailsWrapper') .style.display = view === 'details'  ? 'block' : 'none';
+            document.getElementById('errorsWrapper')  .style.display = view === 'errors'   ? 'block' : 'none';
+            document.getElementById('controlsWrapper').style.display = view === 'controls' ? 'block' : 'none';
 
             dom.btnShowSummary.className = 'btn ' + (view === 'summary' ? 'btn-primary' : 'btn-outline');
             dom.btnShowDetails.className = 'btn ' + (view === 'details' ? 'btn-primary' : 'btn-outline');
 
-            // Botón errores: estilo propio (ámbar)
+            // Botón errores: estilo ámbar
             const isErr = view === 'errors';
-            dom.btnShowErrors.style.background    = isErr ? '#ffc107' : 'white';
-            dom.btnShowErrors.style.color         = isErr ? '#333'    : '#856404';
-            dom.btnShowErrors.style.borderColor   = '#ffc107';
+            dom.btnShowErrors.style.background  = isErr ? '#ffc107' : 'white';
+            dom.btnShowErrors.style.color       = isErr ? '#333'    : '#856404';
+            dom.btnShowErrors.style.borderColor = '#ffc107';
+
+            // Botón controles: estilo verde
+            const isCtrl = view === 'controls';
+            dom.btnShowControls.style.background  = isCtrl ? '#28a745' : 'white';
+            dom.btnShowControls.style.color       = isCtrl ? '#fff'    : '#155724';
+            dom.btnShowControls.style.borderColor = '#28a745';
         }
 
-        dom.btnShowSummary.onclick = () => switchView('summary');
-        dom.btnShowDetails.onclick = () => switchView('details');
-        dom.btnShowErrors .onclick = () => switchView('errors');
+        dom.btnShowSummary .onclick = () => switchView('summary');
+        dom.btnShowDetails .onclick = () => switchView('details');
+        dom.btnShowErrors  .onclick = () => switchView('errors');
+        dom.btnShowControls.onclick = () => switchView('controls');
 
         // ============================================================
         // EXPORTAR CSV
@@ -2694,18 +2907,134 @@
         // ============================================================
         let _zoomLevel = 1.0;
         function _applyZoom() {
-            document.body.style.zoom = _zoomLevel;
-            document.getElementById('zoom-label').textContent = Math.round(_zoomLevel * 100) + '%';
+            const c = document.querySelector('.container');
+            c.style.transformOrigin = 'top left';
+            c.style.transform = `scale(${_zoomLevel})`;
+            // Ajustar altura del body para que el scroll siga funcionando
+            c.style.width = (100 / _zoomLevel) + '%';
+            document.body.style.minHeight =
+                Math.round(c.scrollHeight * _zoomLevel) + 'px';
+            document.getElementById('zoom-label').textContent =
+                Math.round(_zoomLevel * 100) + '%';
+            // Forzar redibujado de Plotly para que recalcule sus coordenadas
+            const gd = document.getElementById('mainChart');
+            if (gd && gd.data) Plotly.relayout(gd, {});
         }
         function zoomIn()    { _zoomLevel = Math.min((_zoomLevel + 0.1), 2.0); _applyZoom(); }
         function zoomOut()   { _zoomLevel = Math.max((_zoomLevel - 0.1), 0.5); _applyZoom(); }
         function zoomReset() { _zoomLevel = 1.0; _applyZoom(); }
 
+        // ============================================================
+        // VISOR HEX DE CABECERA (click en header-item)
+        // ============================================================
+        function showHeaderHex(off, len, label, rev) {
+            if (!headerBytes) return;
+            const COL = 16;
+
+            // Para campos LE multibyte: los bytes en fichero están en orden inverso
+            // al valor mostrado. Construimos el conjunto de posiciones a resaltar.
+            // rev=true → el byte menos significativo está en off, el más en off+len-1
+            // En el hexdump mostramos los bytes TAL CUAL están en el fichero (sin reordenar),
+            // pero añadimos una línea "Valor LE → BE" en los metadatos.
+            const fieldBytes = Array.from(headerBytes.slice(off, off + len));
+            let metaExtra = '';
+            if (rev && len > 1) {
+                const rawHex  = fieldBytes.map(b => b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+                const beHex   = [...fieldBytes].reverse().map(b => b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+                metaExtra = `\nEn fichero (LE): ${rawHex}   →   Valor (BE): ${beHex}`;
+            }
+
+            let html = '';
+            for (let row = 0; row * COL < headerBytes.length; row++) {
+                const start  = row * COL;
+                const end    = Math.min(start + COL, headerBytes.length);
+                const offset = start.toString(16).toUpperCase().padStart(4, '0');
+                const h = b => b.toString(16).toUpperCase().padStart(2, '0');
+
+                let hexPart = '';
+                for (let i = 0; i < COL; i++) {
+                    if (i === 8) hexPart += '  ';
+                    else if (i > 0) hexPart += ' ';
+                    const absIdx = start + i;
+                    if (i >= (end - start)) { hexPart += '   '; continue; }
+                    const bVal   = headerBytes[absIdx];
+                    const isField = absIdx >= off && absIdx < off + len;
+                    hexPart += isField
+                        ? `<span class="hm-hi">${h(bVal)}</span>`
+                        : h(bVal);
+                }
+
+                let asciiPart = '';
+                for (let i = start; i < end; i++) {
+                    const b  = headerBytes[i];
+                    const ch = (b >= 32 && b < 127) ? String.fromCharCode(b) : '·';
+                    const isField = i >= off && i < off + len;
+                    asciiPart += isField ? `<span class="hm-hi">${ch}</span>` : ch;
+                }
+
+                html +=
+                    `<span class="hm-offset">${offset}  </span>` +
+                    `<span class="hm-hex">${hexPart}</span>` +
+                    `<span class="hm-sep">  │  </span>` +
+                    `<span class="hm-ascii">${asciiPart}</span>\n`;
+            }
+
+            document.getElementById('hmFieldName').textContent = label;
+            document.getElementById('hmMeta').textContent =
+                `Offset: 0x${off.toString(16).toUpperCase().padStart(2,'0')}` +
+                `  Longitud: ${len} byte${len !== 1 ? 's' : ''}` +
+                (rev && len > 1 ? '  (little-endian)' : '') +
+                metaExtra;
+            document.getElementById('hmDump').innerHTML = html;
+            document.getElementById('hexModal').classList.add('visible');
+        }
+
+        // Delegación de eventos en el grid de cabecera
+        document.getElementById('headerData').addEventListener('click', e => {
+            const item = e.target.closest('.header-item');
+            if (!item) return;
+            const off   = parseInt(item.dataset.off);
+            const len   = parseInt(item.dataset.len);
+            const label = item.dataset.label;
+            const rev   = item.dataset.rev === '1';
+            showHeaderHex(off, len, label, rev);
+        });
+
+        // Cerrar modal con Escape
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                document.getElementById('hexModal').classList.remove('visible');
+                document.getElementById('ctrlChartModal').style.display = 'none';
+                Plotly.purge('controlsChartModal');
+            }
+        });
+
+        document.getElementById('ctrlChartModal').addEventListener('click', e => {
+            if (e.target === document.getElementById('ctrlChartModal')) {
+                document.getElementById('ctrlChartModal').style.display = 'none';
+                Plotly.purge('controlsChartModal');
+            }
+        });
+
+        // Cerrar modal al pulsar fuera del cuadro
+        document.getElementById('hexModal').addEventListener('click', e => {
+            if (e.target === document.getElementById('hexModal'))
+                document.getElementById('hexModal').classList.remove('visible');
+        });
+
         // Zoom con teclado (Ctrl++ / Ctrl+- / Ctrl+0)
+        // Tecla P: capturar gráfica (incluye tooltip visible en ese momento)
         document.addEventListener('keydown', e => {
             if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomIn(); }
             if (e.ctrlKey &&  e.key === '-')                   { e.preventDefault(); zoomOut(); }
             if (e.ctrlKey &&  e.key === '0')                   { e.preventDefault(); zoomReset(); }
+            if (!e.ctrlKey && !e.altKey && !e.metaKey &&
+                (e.key === 'p' || e.key === 'P') &&
+                document.activeElement.tagName !== 'INPUT' &&
+                document.activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                dom.btnExportImg.click();
+            }
         });
     </script>
 </body>
