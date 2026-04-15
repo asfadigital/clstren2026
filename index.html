@@ -606,6 +606,7 @@
             }
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
 <body>
@@ -639,10 +640,40 @@
       <div style="display:flex;gap:10px;">
         <button class="btn btn-primary btn-sm" onclick="saveReport()">💾 Guardar PDF</button>
         <button class="btn btn-outline btn-sm" onclick="printReport()">🖨 Imprimir</button>
+        <button class="btn btn-outline btn-sm" onclick="openEmailModal()">✉ Enviar por email</button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('reportModal').classList.remove('visible')">✕ Cerrar</button>
       </div>
     </div>
     <div id="reportContent"></div>
+  </div>
+</div>
+
+<!-- MODAL ENVIAR EMAIL -->
+<div id="emailModal" style="display:none;position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.25);padding:24px 28px;width:440px;max-width:95vw;font-family:inherit;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <span style="font-weight:700;font-size:14px;color:#0056b3;">✉ Enviar informe por email</span>
+      <button onclick="closeEmailModal()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#888;line-height:1;padding:0 4px;">✕</button>
+    </div>
+    <div id="emailStepCopy" style="">
+      <div style="background:#f0f7ff;border:1px solid #b8d4f0;border-radius:6px;padding:12px 14px;font-size:12px;color:#1a4a7a;margin-bottom:16px;line-height:1.6;">
+        <b>Cómo enviar el informe con formato completo:</b><br>
+        1. Pulsa <b>Copiar informe</b> — se copia el informe formateado al portapapeles.<br>
+        2. Crea un nuevo email en tu cliente de correo (Outlook, Gmail…).<br>
+        3. Haz clic en el cuerpo del mensaje y pega (<b>Ctrl+V</b>).<br>
+        4. El informe aparecerá con tablas, colores y gráfica.
+      </div>
+      <div id="emailCopyStatus" style="display:none;background:#d4edda;border:1px solid #b8dfc4;border-radius:6px;padding:10px 14px;font-size:12px;color:#155724;margin-bottom:16px;">
+        ✅ <b>¡Informe copiado!</b> Pégalo en el cuerpo de tu email con Ctrl+V.
+      </div>
+      <div id="emailCopyFallback" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;font-size:12px;color:#856404;margin-bottom:16px;">
+        ⚠️ No se pudo copiar automáticamente. Se ha abierto el informe en una nueva pestaña — selecciona todo (Ctrl+A) y cópialo manualmente.
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button onclick="closeEmailModal()" class="btn btn-outline btn-sm">Cerrar</button>
+        <button id="btnCopyReport" onclick="copyReportToClipboard()" class="btn btn-primary btn-sm">📋 Copiar informe</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3114,25 +3145,116 @@
             setTimeout(() => { document.title = prevTitle; }, 500);
         }
 
+        function openEmailModal() {
+            document.getElementById('emailCopyStatus').style.display   = 'none';
+            document.getElementById('emailCopyFallback').style.display = 'none';
+            const btn = document.getElementById('btnCopyReport');
+            btn.innerHTML = '📋 Copiar informe'; btn.disabled = false;
+            document.getElementById('emailModal').style.display = 'flex';
+        }
+
+        function closeEmailModal() {
+            document.getElementById('emailModal').style.display = 'none';
+        }
+
+        async function copyReportToClipboard() {
+            const contentEl = document.getElementById('reportContent');
+
+            // CSS inline para que el HTML pegado en Outlook/Gmail se vea bien
+            const inlineCSS = `
+                body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #212529; }
+                h2 { font-size: 14px; color: #0056b3; border-bottom: 1px solid #dee2e6;
+                     padding-bottom: 4px; margin: 18px 0 8px; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+                th, td { border: 1px solid #dee2e6; padding: 5px 8px; text-align: left; }
+                th { background-color: #f8f9fa; font-weight: 600; }
+                .rpt-meta { font-size: 12px; color: #555; margin-bottom: 6px; }
+                img { max-width: 100%; border: 1px solid #dee2e6; border-radius: 4px; }
+                .eb-item { border-left: 3px solid #dc3545; padding: 6px 10px; margin-bottom: 6px;
+                           background-color: #fff5f5; border-radius: 0 4px 4px 0; font-size: 12px; }
+            `;
+
+            // HTML completo standalone para pegar en email
+            const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8">
+                <style>${inlineCSS}</style></head>
+                <body style="max-width:800px;margin:0 auto;padding:20px;">
+                ${contentEl.innerHTML}
+                </body></html>`;
+
+            const btn = document.getElementById('btnCopyReport');
+            btn.innerHTML = '⏳ Copiando…'; btn.disabled = true;
+
+            try {
+                // Clipboard API con tipo text/html para que los clientes de correo respeten el formato
+                if (navigator.clipboard && window.ClipboardItem) {
+                    const blob = new Blob([fullHtml], { type: 'text/html' });
+                    await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob })]);
+                } else {
+                    // Fallback: insertar en iframe oculto y ejecutar copy
+                    const ta = document.createElement('textarea');
+                    ta.value = fullHtml;
+                    ta.style.cssText = 'position:fixed;opacity:0;';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    const ok = document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    if (!ok) throw new Error('execCommand failed');
+                }
+                document.getElementById('emailCopyStatus').style.display   = 'block';
+                document.getElementById('emailCopyFallback').style.display = 'none';
+                btn.innerHTML = '✅ Copiado'; btn.disabled = false;
+            } catch(e) {
+                // Fallback: abrir en nueva pestaña
+                const win = window.open('', '_blank');
+                if (win) {
+                    win.document.write(fullHtml);
+                    win.document.close();
+                }
+                document.getElementById('emailCopyFallback').style.display = 'block';
+                document.getElementById('emailCopyStatus').style.display   = 'none';
+                btn.innerHTML = '📋 Copiar informe'; btn.disabled = false;
+            }
+        }
+
+        // Cerrar modal de email al hacer clic en el fondo
+        document.getElementById('emailModal').addEventListener('click', e => {
+            if (e.target === document.getElementById('emailModal')) closeEmailModal();
+        });
+
         async function saveReport() {
             const fileName = _reportFileName() + '.pdf';
-            // Intentar con la API moderna de guardado (Chrome/Edge)
-            if (window.showSaveFilePicker) {
-                try {
-                    const handle = await window.showSaveFilePicker({
-                        suggestedName: fileName,
-                        types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }]
-                    });
-                    // No podemos generar PDF directamente desde JS sin librería externa,
-                    // así que lanzamos print con el nombre sugerido
-                    handle.createWritable().then(w => w.close()); // cerrar sin escribir
-                } catch(e) { /* cancelado */ return; }
+            const content  = document.getElementById('reportContent');
+
+            // Botón de guardar: indicar progreso
+            const btn = document.querySelector('#reportModal .rm-toolbar button.btn-primary');
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) { btn.innerHTML = '⏳ Generando…'; btn.disabled = true; }
+
+            // Pedir nombre de fichero al usuario (prompt editable, con valor por defecto)
+            const userFileName = window.prompt('Nombre del fichero PDF:', fileName);
+            if (userFileName === null) {
+                // Usuario canceló
+                if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+                return;
             }
-            // Fallback: usar print con el nombre correcto (el navegador sugiere el título como nombre)
-            const prevTitle = document.title;
-            document.title = fileName.replace('.pdf', '');
-            window.print();
-            setTimeout(() => { document.title = prevTitle; }, 500);
+            const finalName = (userFileName.trim() || fileName).replace(/\.pdf$/i, '') + '.pdf';
+
+            const opt = {
+                margin:      [10, 12, 10, 12],
+                filename:    finalName,
+                image:       { type: 'jpeg', quality: 0.92 },
+                html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
+                jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:   { mode: 'css', before: '.pdf-page-break' }
+            };
+
+            try {
+                await html2pdf().set(opt).from(content).save();
+            } catch(e) {
+                alert('Error al generar el PDF: ' + e.message);
+            } finally {
+                if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+            }
         }
         document.getElementById('btnGenReport').onclick = async () => {
             if (!rawData.length) { alert('Carga un fichero antes de generar el informe.'); return; }
@@ -3377,23 +3499,41 @@
                 if (zoomTime && (p.ts < s || p.ts > n)) return false;
                 return p.vr > 0;
             });
+            // Sonidos: 0xFFF2 con val>0 independiente de velocidad
+            const acuListAll = rawData.filter(p => {
+                if (p.vC !== 0xFFF2 || p.val === 0) return false;
+                if (zoomTime && (p.ts < s || p.ts > n)) return false;
+                return true;
+            });
             // Distancia con V>0: leer del KPI Dist.Vis que ya tiene el valor correcto
-            let distKm = 0;
+            let distKm = 0, distKmTotal = 0;
             const kpiDistEl = document.getElementById('kpiDist');
             if (kpiDistEl) {
                 const match = kpiDistEl.textContent.match(/([\d.,]+)\s*m/);
                 if (match) distKm = parseFloat(match[1].replace(/\./g, '').replace(',', '.')) / 1000;
             }
-            const fe100  = distKm > 0 ? (ebList.length  / distKm * 100).toFixed(2) : '—';
-            const l7100  = distKm > 0 ? (l7List.length  / distKm * 100).toFixed(2) : '—';
-            const acu100 = distKm > 0 ? (acuList.length / distKm * 100).toFixed(2) : '—';
+            // Distancia total (incluyendo V=0)
+            {
+                const full = chartFull;
+                if (full && full.dist && full.dist.length) {
+                    let lo2 = 0, hi2 = full.ts.length - 1;
+                    if (zoomTime) {
+                        while (lo2 < full.ts.length && full.ts[lo2] < s) lo2++;
+                        if (lo2 > 0) lo2--;
+                        hi2 = lo2;
+                        while (hi2 < full.ts.length - 1 && full.ts[hi2] <= n) hi2++;
+                    }
+                    distKmTotal = Math.abs(full.dist[hi2] - full.dist[lo2]) / 1000;
+                }
+            }
+            const r100v  = (n, d) => d > 0 ? (n / d * 100).toFixed(2) : '—';
 
             html += `<h2>6. Métricas por 100 km</h2>`;
-            html += `<p class="rpt-meta">Distancia con V&gt;0: <strong>${distKm > 0 ? distKm.toFixed(3) + ' km' : 'no disponible'}</strong>${zoomTime ? ' (tramo visible)' : ''}</p>`;
-            html += `<table><thead><tr><th>Métrica</th><th>Total</th><th>Por 100 km (V&gt;0)</th></tr></thead><tbody>` +
-                `<tr><td>Frenos de emergencia</td><td>${ebList.length}</td><td>${fe100}</td></tr>` +
-                `<tr><td>Balizas L7 (0xFFF0, val=7)</td><td>${l7List.length}</td><td>${l7100}</td></tr>` +
-                `<tr><td>Indicaciones acústicas / Sonidos (0xFFF2)</td><td>${acuList.length}</td><td>${acu100}</td></tr>` +
+            html += `<table><thead><tr><th>Métrica</th><th>Total</th><th>Por 100 km</th></tr></thead><tbody>` +
+                `<tr><td>Frenos de emergencia</td><td>${ebList.length}</td><td>${r100v(ebList.length, distKm)}</td></tr>` +
+                `<tr><td>Balizas L7 (0xFFF0, val=7)</td><td>${l7List.length}</td><td>${r100v(l7List.length, distKm)}</td></tr>` +
+                `<tr><td>Sonidos con V&gt;0 (0xFFF2)</td><td>${acuList.length}</td><td>${r100v(acuList.length, distKm)}</td></tr>` +
+                `<tr><td>Sonidos totales (0xFFF2)</td><td>${acuListAll.length}</td><td>${r100v(acuListAll.length, distKmTotal)}</td></tr>` +
                 `</tbody></table>`;
 
             // ── 7. BALIZAS RECIBIDAS EN MENOS DE 4S TRAS OTRA BALIZA ─
